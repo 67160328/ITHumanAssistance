@@ -1,0 +1,91 @@
+# แผนการพัฒนาโปรเจกต์: IT Human Translator 🚀
+> **จาก AI Wrapper App สู่ Enterprise AI-Powered Requirement Engineering & Workflow Automation Platform**
+
+---
+
+## 🎯 วิสัยทัศน์ของผลิตภัณฑ์ (Product Vision)
+ยกระดับจากเพียงแค่ **"เว็บแปลภาษาไอที"** ไปเป็น **"แพลตฟอร์มบริหารจัดการความต้องการและแปลงการสื่อสารของซอฟต์แวร์ด้วย AI"** ที่เชื่อมโยงช่องว่างระหว่างทีมธุรกิจ (Non-Tech/Client) และทีมพัฒนา (Tech/Developers) พร้อมความปลอดภัยระดับองค์กร (Enterprise Security) และการเชื่อมต่อกับระบบการทำงานหลักอย่างเป็นรูปธรรม
+
+---
+
+## 📌 Phase 1: MVP Enhancement & Context-Aware Engine (ระยะสั้น - 1-2 เดือน)
+**เป้าหมาย:** ทลายข้อจำกัดการแปลแบบลอยๆ ให้ AI เข้าใจบริบทเฉพาะของโปรเจกต์/องค์กร และรองรับการนำข้อมูลออกไปใช้งานต่อได้ทันที
+
+### 1.1 Project Context & Tech Stack Selector
+* [NEW] เพิ่มส่วนเลือก/กำหนด **Project Profile & Tech Stack Context** ในฝั่ง Frontend
+  * ให้ผู้ใช้ระบุได้ว่าองค์กร/โปรเจกต์นี้ใช้ Tech Stack อะไร (เช่น React, FastAPI, PostgreSQL, AWS, Docker)
+  * AI จะนำ Context นี้ไปผสมใน System Prompt เพื่อส่งมอบข้อเสนอแนะทางเทคนิคที่ **ตรงกับ Architecture ของบริษัทจริง**
+* [MODIFY] [`backend/services.py`](file:///c:/ITHumanAssistance/backend/services.py)
+  * ปรับแต่ง Prompt Engine ให้รองรับ Dynamic Context Ingestion (Tech Stack, Budget Level, Timeline Constraint)
+
+### 1.2 Multi-Format Export Engine
+* [NEW] ระบบ Export ผลลัพธ์ในรูปแบบมาตรฐานการทำงาน:
+  * **Export to Jira / Trello Markdown Format** (พร้อมติด Tag `user-story`, `acceptance-criteria`)
+  * **Export to Professional Client Email / Proposal PDF Draft**
+  * **Export to OpenAPI / Swagger Template Draft** (สำหรับโหมด Human-to-Tech)
+
+### 1.3 Man-Days & Effort Estimation Engine (AI-Assisted)
+* เพิ่มโมดูลประเมิน **Man-Days / Man-Months** และ **Complexity Score** (Low, Medium, High) เบื้องต้น เพื่อให้ PM หรือทีม Sales นำไปประเมินราคางานและวางแผน Sprint ได้ทันที
+
+---
+
+## 📌 Phase 2: Knowledge Base & RAG Integration (ระยะกลาง - 2-4 เดือน)
+**เป้าหมาย:** สร้าง **Moat (เกราะป้องกันทางธุรกิจ)** ด้วยการผสานข้อมูลองค์กร (RAG - Retrieval-Augment Generation) และเอกสารภายใน
+
+### 2.1 Corporate Knowledge Base & PRD Ingestion (RAG)
+* [NEW] ระบบอัปโหลดเอกสารโปรเจกต์ (PDF, DOCX, Markdown, Swagger JSON, PRD)
+* [NEW] Backend Vector Database (เช่น Pinecone, Qdrant หรือ ChromaDB)
+  * แปลงเอกสารระบบเดิมขององค์กรเป็น Embeddings
+  * เมื่อลูกค้าสั่งเพิ่มฟีเจอร์ AI จะดึงข้อมูลสถาปัตยกรรมเดิมมาวิเคราะห์ว่า *"ฟีเจอร์นี้จะกระทบกับ Module เดิมใดบ้าง"* และ *"ต้องใช้เวลาเพิ่มเท่าใด"*
+
+### 2.2 Enterprise Security & Data Protection Guardrails
+* [NEW] **PII & Secret Sanitizer Layer:** สแกนและ Mask ข้อมูลสำคัญ (เช่น API Key, รหัสผ่าน, ข้อมูลส่วนบุคคล) ออกจากข้อความอินพุตก่อนส่งไปยัง LLM API
+* [NEW] **Data Privacy Compliance:** การตั้งค่าเลือกโมเดล (On-Premise / Local LLM หรือ Private Cloud LLM Instance) สำหรับลูกค้า B2B Enterprise ที่ซีเรียสเรื่อง Data Privacy
+
+---
+
+## 📌 Phase 3: Workflow Automation & Ecosystem Integrations (ระยะกลาง-ไกล - 4-6 เดือน)
+**เป้าหมาย:** เปลี่ยนจากการเป็นแค่เว็บเดี่ยวๆ ไปเป็นส่วนหนึ่งในสถาปัตยกรรมเครื่องมือของทีม (Toolchain Integration)
+
+### 3.1 Direct Integrations (B2B SaaS Power-ups)
+* **Jira & Azure DevOps Integration:** กดคลิกเดียวสร้าง Epic / User Stories / Tasks เข้าไปยัง Jira Backlog โดยอัตโนมัติ
+* **Slack & Microsoft Teams Bot:** 
+  * เมื่อโปรแกรมเมอร์เปิด Issue หรือคอมเมนต์ปิด Ticket ใน GitHub/Jira บอทจะทำการแปลความคืบหน้านี้เป็น "ภาษาคนที่เข้าใจง่าย" แล้วส่งแจ้งเตือนใน Slack Channel ของลูกค้าโดยอัตโนมัติ
+
+### 3.2 Two-Way Client Collaboration Portal
+* สร้างหน้าลิงก์แชร์เฉพาะ (Interactive Approval Link) ให้ลูกค้าเข้ามากด **Approve / Request Revision** ต่อข้อกำหนดทางเทคนิคที่แปลออกมาแล้ว เพื่อให้เกิด Human-in-the-loop Collaboration
+
+---
+
+## 📌 Phase 4: Enterprise Intelligence & Analytics (ระยะยาว - 6-9 เดือน)
+**เป้าหมาย:** สร้างคุณค่าเชิงกลยุทธ์ผ่านข้อมูลวิเคราะห์ระดับผู้บริหาร (Executive Dashboard)
+
+### 4.1 Requirement Miscommunication Analytics
+* แดชบอร์ดสรุปสถิติความเข้าใจผิดพลาดในการสื่อสาร:
+  * ฟีเจอร์ประเภทใดที่เกิด Scope Creep บ่อยที่สุด
+  * ทีมพัฒนาใช้เวลาชี้แจงปัญหาเทคนิคประเภทใดมากที่สุด
+* **AI Scope Creep Warning:** แจ้งเตือนเมื่อข้อความของลูกค้าเริ่มมีการขอเพิ่มขอบเขตงานนอกเหนือจากสัญญาเดิม (Out-of-Scope Detection)
+
+### 4.2 Multi-Model Routing & Cost Optimization
+* ระบบ **Smart Model Router:** เลือกใช้ LLM โมเดลขนาดเล็ก (Small/Fast Model) สำหรับเคสทั่วไป และสลับไปใช้ โมเดลขนาดใหญ่ (Reasoning Model) เฉหรับเคสที่มีความซับซ้อน เพื่อควบคุมต้นทุน API Cost ให้ต่ำที่สุด
+
+---
+
+## 📊 สรุปตาราง Roadmap และเป้าหมายทางธุรกิจ
+
+| Phase | ฟีเจอร์หลัก | คุณค่าเชิงธุรกิจ (Business Value) | ชูจุดเด่นให้นักลงทุน |
+| :--- | :--- | :--- | :--- |
+| **Phase 1** | Project Context, Multi-Export, Effort Estimator | เพิ่ม Productivity ทันที ปิดงานได้ไวขึ้น | จากเว็บแปล -> เครื่องมือช่วย PM และทีม Sales |
+| **Phase 2** | RAG (Knowledge Base), PII Sanitizer | คำตอบแม่นยำสูง ปลอดภัยตามมาตรฐานองค์กร | มี Data Moat และป้องกันข้อมูลรั่วไหล |
+| **Phase 3** | Jira/Slack Integration, Client Portal | ฝังตัวเข้ากับ Workflow เดิมของทีม | เปลี่ยนเป็น B2B SaaS (High Retention Rate) |
+| **Phase 4** | Scope Creep Detection, Smart Model Router | ลดความเสียหายจากงานบานปลาย บริหาร Cost | แพลตฟอร์มบริหารจัดการการสื่อสารระดับ Enterprise |
+
+---
+
+## 🛠️ Verification & Execution Strategy
+1. **การตรวจสอบในระดับระบบ:**
+   * ทดสอบ API Response Time และ Accuracy ของ JSON Structure จาก Gemini
+   * ทดสอบความถูกต้องของ Data Sanitization (กรอง API Key / Personal Data)
+2. **การวัดผลทางธุรกิจ (Metrics to Measure):**
+   * Time-to-Spec Reduction (เวลาที่ลดลงในการแปลงความต้องการลูกค้าเป็น Spec)
+   * User Engagement on Integrations (อัตราการใช้งานปุ่ม Export / Integration)
