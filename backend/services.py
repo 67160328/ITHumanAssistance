@@ -27,14 +27,36 @@ CANDIDATE_MODELS = [
 
 DEFAULT_KEY = os.getenv("GEMINI_API_KEY", "")
 
-async def translate_with_gemini(input_text: str, mode: str, api_key: str = None, project_context: str = None) -> tuple[Dict[str, Any], bool]:
+async def translate_with_gemini(input_text: str, mode: str, api_key: str = None, project_context: str = None, budget_level: str = None, timeline_constraint: str = None) -> tuple[Dict[str, Any], bool]:
     key = api_key if api_key and api_key.strip() else DEFAULT_KEY
 
-    context_str = f"\n[บริบทองค์กร/Tech Stack เดิมของผู้ใช้]: {project_context.strip()}\n" if project_context and project_context.strip() else ""
+    ctx_parts = []
+    if project_context and project_context.strip():
+        ctx_parts.append(f"Tech Stack เดิม: {project_context.strip()}")
+    if budget_level and budget_level.strip():
+        ctx_parts.append(f"ระดับงบประมาณ (Budget Level): {budget_level.strip()}")
+    if timeline_constraint and timeline_constraint.strip():
+        ctx_parts.append(f"กรอบเวลาพัฒนา (Timeline Constraint): {timeline_constraint.strip()}")
+
+    context_str = ""
+    if ctx_parts:
+        context_str = (
+            f"\n[สำคัญมาก - บริบทโปรเจกต์และข้อจำกัดขององค์กร]: {', '.join(ctx_parts)}\n"
+            "**คำสั่งพิเศษ**: โปรดเลือกแนะนำ Tech Stack, สถาปัตยกรรมระบบ, และการคำนวณ Effort/Cost (Man-Days & Budget Range) ให้สะท้อนและสอดคล้องกับข้อจำกัดเรื่องงบประมาณและกรอบเวลาด้านบนอย่างตรงไปตรงมา\n"
+        )
 
     prompt_user = (
         f'กรุณาแปลข้อความต่อไปนี้ภายใต้โหมด [Human-to-Tech]:\nข้อความอินพุต: "{input_text}"{context_str}\n\n'
-        'ตอบกลับในรูปแบบ JSON Object เท่านั้น มีคีย์ summary, technicalRequirements (list), techStack (list of dict with name, desc), riskAnalysis (list), suggestedQuestions (list), และ effortEstimation (dict with keys: complexity (Low/Medium/High), estimatedManDays (string เช่น 3-5 วัน), estimatedCostRange (string เช่น 15,000 - 25,000 บาท), reasoning)'
+        '**ข้อกำหนดสำคัญ**: ให้สร้างข้อมูลที่สมบูรณ์สำหรับระดับ Enterprise PRD โดยตอบกลับเป็น JSON Object เท่านั้นที่มีคีย์ต่อไปนี้:\n'
+        '1. summary (string): สรุปเป้าหมายหลัก\n'
+        '2. technicalRequirements (list of detailed strings): ข้อกำหนดทางเทคนิคเชิงลึก ครอบคลุม Frontend, Backend, Database, Security\n'
+        '3. techStack (list of dict with name, desc): แนะนำ Tech Stack ที่สอดคล้องกับบริบท\n'
+        '4. acceptanceCriteria (list of strings): เงื่อนไขการตรวจรับงาน (Acceptance Criteria) ในรูปแบบ Given-When-Then หรือ Checklist\n'
+        '5. nonFunctionalRequirements (list of strings): ข้อกำหนดด้านประสิทธิภาพ (NFR) เช่น Latency SLA, Concurrent Users, PDPA/Security Standard\n'
+        '6. apiDraft (list of strings): ร่าง API Endpoints หรือ Data Payload (เช่น POST /api/v1/... (Body: {...}))\n'
+        '7. riskAnalysis (list of strings): วิเคราะห์ความเสี่ยง\n'
+        '8. suggestedQuestions (list of strings): คำถามถามลูกค้าเพิ่มเติม\n'
+        '9. effortEstimation (dict with keys: complexity, estimatedManDays, estimatedCostRange, reasoning)\n'
         if mode == 'human-to-tech' else
         f'กรุณาแปลข้อความต่อไปนี้ภายใต้โหมด [Tech-to-Human]:\nข้อความอินพุต: "{input_text}"{context_str}\n\n'
         'ตอบกลับในรูปแบบ JSON Object เท่านั้น มีคีย์ summary, politeExplanation, analogy (dict with icon, title, description), impact, estimatedTime'
@@ -69,28 +91,33 @@ async def translate_with_gemini(input_text: str, mode: str, api_key: str = None,
                 print(f"Model {model} failed: {e}")
 
     # Local fallback
-    return generate_local_fallback(input_text, mode), False
+    return generate_local_fallback(input_text, mode, project_context), False
 
-def generate_local_fallback(text: str, mode: str) -> Dict[str, Any]:
+def generate_local_fallback(text: str, mode: str, project_context: str = None) -> Dict[str, Any]:
+    ctx_desc = f" (ตามบริบทโปรเจกต์: {project_context})" if project_context and project_context.strip() else ""
     if mode == 'human-to-tech':
+        tech_stack = [
+            {"name": "React / Next.js", "desc": "สำหรับระบบ Front-end ที่ทันสมัย"},
+            {"name": "FastAPI + Python", "desc": "สำหรับ Back-end High Performance REST API"},
+            {"name": "PostgreSQL", "desc": "สำหรับระบบฐานข้อมูลที่มีความปลอดภัยสูง"}
+        ]
+        if project_context and project_context.strip():
+            tech_stack.insert(0, {"name": "Specified Context Stack", "desc": project_context.strip()})
+
         return {
-            "summary": f"สรุปความต้องการเชิงธุรกิจ: {text[:50]}...",
+            "summary": f"สรุปความต้องการเชิงธุรกิจ{ctx_desc}: {text[:50]}...",
             "technicalRequirements": [
-                "ระบบเว็บและโมบายแอปพลิเคชัน (Responsive & Cross-platform Architecture)",
-                "ระบบจัดการข้อมูลและรายงานหลังบ้าน (CRUD Administrative Dashboard)"
+                f"พัฒนาฟีเจอร์สำหรับ '{text}' ให้รองรับสถาปัตยกรรมเดิมของโปรเจกต์{ctx_desc}",
+                "ออกแบบระบบจัดการข้อมูลและรายงานหลังบ้าน (CRUD Administrative Dashboard)"
             ],
-            "techStack": [
-                {"name": "React / Next.js", "desc": "สำหรับระบบ Front-end ที่ทันสมัย"},
-                {"name": "FastAPI + Python", "desc": "สำหรับ Back-end High Performance REST API"},
-                {"name": "PostgreSQL", "desc": "สำหรับระบบฐานข้อมูลที่มีความปลอดภัยสูง"}
-            ],
-            "riskAnalysis": ["ควรกำหนดขอบเขตงาน (Scope of Work) ให้ชัดเจนก่อนเริ่มการพัฒนา"],
+            "techStack": tech_stack,
+            "riskAnalysis": [f"ควรกำหนดขอบเขตงาน (Scope of Work) และตรวจสอบ compatibility กับ {project_context or 'ระบบเดิม'}"],
             "suggestedQuestions": ["มีระบบเดิมที่ต้องเชื่อมต่อข้อมูลเพิ่มเติมหรือไม่?"],
             "effortEstimation": {
                 "complexity": "Medium",
                 "estimatedManDays": "3 - 5 วันทำการ",
                 "estimatedCostRange": "15,000 - 30,000 บาท",
-                "reasoning": "อ้างอิงจากขอบเขตงานการสร้าง UI Dashboard และ API endpoint เบื้องต้น"
+                "reasoning": f"อ้างอิงจากขอบเขตงานการสร้าง UI Dashboard และ API endpoint ตามบริบท {project_context or 'มาตรฐาน'}"
             }
         }
     else:

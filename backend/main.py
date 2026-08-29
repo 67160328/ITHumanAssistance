@@ -169,7 +169,14 @@ async def translate(req: TranslateRequest):
             detail="Mode ต้องเป็น 'human-to-tech' หรือ 'tech-to-human' เท่านั้น"
         )
 
-    translated_data, is_ai = await translate_with_gemini(req.input_text, req.mode, req.api_key, req.project_context)
+    translated_data, is_ai = await translate_with_gemini(
+        req.input_text,
+        req.mode,
+        req.api_key,
+        req.project_context,
+        req.budget_level,
+        req.timeline_constraint
+    )
 
     history_entry = {
         "id": next_history_id,

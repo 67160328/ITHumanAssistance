@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { PRESETS } from './data/presets';
+import { TECH_STACK_PRESETS } from './data/techStackPresets';
 import { translateText, getStoredApiKey } from './services/translator';
 import SettingsModal from './components/SettingsModal';
+import { downloadMarkdownFile, exportToPDF, generateJiraFormat, downloadOpenAPIJson, generateClientEmailDraft } from './utils/exportUtils';
 import {
   Sparkles,
   ArrowRightLeft,
@@ -20,13 +22,18 @@ import {
   Bot,
   Loader2,
   FileCode2,
-  Server
+  Server,
+  FileText,
+  Printer,
+  Mail
 } from 'lucide-react';
 
 export default function App() {
   const [mode, setMode] = useState('human-to-tech'); // 'human-to-tech' | 'tech-to-human'
   const [inputText, setInputText] = useState('');
   const [projectContext, setProjectContext] = useState('');
+  const [budgetLevel, setBudgetLevel] = useState(''); // '', 'Low Budget', 'Medium Budget', 'Enterprise Budget'
+  const [timelineConstraint, setTimelineConstraint] = useState(''); // '', 'Urgent (<1 week)', 'Standard (1 month)', 'Flexible'
   const [translationResult, setTranslationResult] = useState(null);
   const [copied, setCopied] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -40,7 +47,7 @@ export default function App() {
     if (!inputText.trim()) return;
     setIsLoading(true);
     try {
-      const result = await translateText(inputText, mode, currentApiKey, projectContext);
+      const result = await translateText(inputText, mode, currentApiKey, projectContext, budgetLevel, timelineConstraint);
       setTranslationResult(result);
     } catch (err) {
       showToast('การแปลภาษาล้มเหลว: ' + err.message);
@@ -53,7 +60,7 @@ export default function App() {
     setInputText(preset.input);
     setIsLoading(true);
     try {
-      const result = await translateText(preset.input, mode, currentApiKey, projectContext);
+      const result = await translateText(preset.input, mode, currentApiKey, projectContext, budgetLevel, timelineConstraint);
       setTranslationResult(result);
     } catch (err) {
       showToast('การแปลภาษาล้มเหลว: ' + err.message);
@@ -102,29 +109,35 @@ export default function App() {
   };
 
   const handleExportJira = () => {
-    if (!translationResult || mode !== 'human-to-tech') return;
-    const { data } = translationResult;
-    const jiraMarkdown = `h1. User Story / Feature Requirement
-
-*Summary:* ${data.summary}
-
-h2. Technical Requirements
-${data.technicalRequirements.map(req => `* ${req}`).join('\n')}
-
-h2. Recommended Tech Stack
-${data.techStack.map(ts => `* *${ts.name}*: ${ts.desc}`).join('\n')}
-
-h2. Risk Analysis
-${data.riskAnalysis ? data.riskAnalysis.map(r => `* ${r}`).join('\n') : 'N/A'}
-
-${data.effortEstimation ? `h2. Effort & Cost Estimation
-* *Complexity:* ${data.effortEstimation.complexity}
-* *Estimated Man-Days:* ${data.effortEstimation.estimatedManDays}
-* *Estimated Cost Range:* ${data.effortEstimation.estimatedCostRange}
-* *Reasoning:* ${data.effortEstimation.reasoning}` : ''}
-`;
+    if (!translationResult) return;
+    const jiraMarkdown = generateJiraFormat(translationResult);
     navigator.clipboard.writeText(jiraMarkdown);
     showToast('คัดลอกรูปแบบ Jira / Confluence Format สำเร็จ!');
+  };
+
+  const handleExportMarkdown = () => {
+    if (!translationResult) return;
+    downloadMarkdownFile(translationResult);
+    showToast('ดาวน์โหลดไฟล์ Markdown (.md) สำเร็จ!');
+  };
+
+  const handleExportPDF = () => {
+    if (!translationResult) return;
+    exportToPDF(translationResult);
+    showToast('เปิดหน้าต่าง พิมพ์ / บันทึก PDF สำเร็จ!');
+  };
+
+  const handleExportOpenAPI = () => {
+    if (!translationResult) return;
+    downloadOpenAPIJson(translationResult);
+    showToast('ดาวน์โหลดไฟล์ OpenAPI 3.0 Spec (.json) สำเร็จ!');
+  };
+
+  const handleExportClientEmail = () => {
+    if (!translationResult) return;
+    const emailDraft = generateClientEmailDraft(translationResult);
+    navigator.clipboard.writeText(emailDraft);
+    showToast('คัดลอกร่างอีเมลส่งลูกค้า (Client Email Draft) สำเร็จ!');
   };
 
   const showToast = (msg) => {
@@ -253,16 +266,95 @@ ${data.effortEstimation ? `h2. Effort & Cost Estimation
           {/* Project Context Field */}
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', fontSize: '0.85rem', color: '#94A3B8', marginBottom: '0.4rem', fontWeight: '500' }}>
-              🏢 Project Context / Corporate Tech Stack (ระบุบริบทโปรเจกต์ เช่น "องค์กรใช้ Python FastAPI + PostgreSQL บน AWS"):
+              🏢 Project Context / Corporate Tech Stack:
             </label>
+
+            {/* Quick Tech Stack Selector Chips */}
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+              {TECH_STACK_PRESETS.map((tsPreset) => (
+                <button
+                  key={tsPreset.id}
+                  type="button"
+                  onClick={() => setProjectContext(tsPreset.context)}
+                  style={{
+                    background: projectContext === tsPreset.context ? 'rgba(99, 102, 241, 0.25)' : 'rgba(15, 23, 42, 0.6)',
+                    border: projectContext === tsPreset.context ? '1px solid #6366F1' : '1px solid rgba(255,255,255,0.1)',
+                    color: projectContext === tsPreset.context ? '#818CF8' : '#94A3B8',
+                    borderRadius: '6px',
+                    padding: '0.2rem 0.5rem',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {tsPreset.label}
+                </button>
+              ))}
+            </div>
+
             <input
               type="text"
               className="custom-textarea"
               style={{ minHeight: '42px', padding: '0.5rem 0.8rem', height: '42px' }}
-              placeholder="เช่น ใช้ Node.js + React, งบประมาณปานกลาง, ต้องการเน้นความปลอดภัยสูงสุด..."
+              placeholder="เลือก Preset ด้านบน หรือพิมพ์ เช่น Python FastAPI + PostgreSQL..."
               value={projectContext}
               onChange={(e) => setProjectContext(e.target.value)}
             />
+
+            {/* Budget & Timeline Selectors */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginTop: '0.6rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: '#94A3B8', marginBottom: '0.2rem' }}>
+                  💰 ระดับงบประมาณ (Budget Level):
+                </label>
+                <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                  {['งบประหยัด (Low)', 'งบปานกลาง (Medium)', 'องค์กร (Enterprise)'].map((lvl) => (
+                    <button
+                      key={lvl}
+                      type="button"
+                      onClick={() => setBudgetLevel(budgetLevel === lvl ? '' : lvl)}
+                      style={{
+                        background: budgetLevel === lvl ? 'rgba(16, 185, 129, 0.25)' : 'rgba(15, 23, 42, 0.6)',
+                        border: budgetLevel === lvl ? '1px solid #10B981' : '1px solid rgba(255,255,255,0.08)',
+                        color: budgetLevel === lvl ? '#34D399' : '#94A3B8',
+                        borderRadius: '4px',
+                        padding: '0.15rem 0.4rem',
+                        fontSize: '0.7rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {lvl}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: '#94A3B8', marginBottom: '0.2rem' }}>
+                  ⏱️ กรอบเวลา (Timeline Constraint):
+                </label>
+                <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                  {['เร่งด่วน (< 1 สัปดาห์)', 'ปกติ (1 เดือน)', 'ระยะยาว (3+ เดือน)'].map((tml) => (
+                    <button
+                      key={tml}
+                      type="button"
+                      onClick={() => setTimelineConstraint(timelineConstraint === tml ? '' : tml)}
+                      style={{
+                        background: timelineConstraint === tml ? 'rgba(245, 158, 11, 0.25)' : 'rgba(15, 23, 42, 0.6)',
+                        border: timelineConstraint === tml ? '1px solid #F59E0B' : '1px solid rgba(255,255,255,0.08)',
+                        color: timelineConstraint === tml ? '#FBBF24' : '#94A3B8',
+                        borderRadius: '4px',
+                        padding: '0.15rem 0.4rem',
+                        fontSize: '0.7rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {tml}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Text Area */}
@@ -306,16 +398,34 @@ ${data.effortEstimation ? `h2. Effort & Cost Estimation
               )}
             </div>
             {translationResult && (
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                 {translationResult.mode === 'human-to-tech' && (
-                  <button className="btn-secondary" onClick={handleExportJira} style={{ background: 'rgba(59, 130, 246, 0.15)', borderColor: 'rgba(59, 130, 246, 0.4)', color: '#60A5FA' }}>
-                    <FileCode2 size={15} />
-                    <span>Jira Format</span>
+                  <button className="btn-secondary" onClick={handleExportOpenAPI} title="Download OpenAPI 3.0 JSON Spec" style={{ background: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.4)', color: '#34D399', padding: '0.35rem 0.6rem', fontSize: '0.8rem' }}>
+                    <Server size={14} />
+                    <span>OpenAPI JSON</span>
                   </button>
                 )}
-                <button className="btn-secondary" onClick={handleCopyOutput}>
-                  {copied ? <Check size={16} color="#10B981" /> : <Copy size={16} />}
-                  <span>{copied ? 'คัดลอกแล้ว' : 'คัดลอกข้อความ'}</span>
+                {translationResult.mode === 'tech-to-human' && (
+                  <button className="btn-secondary" onClick={handleExportClientEmail} title="Copy Official Client Email Draft" style={{ background: 'rgba(236, 72, 153, 0.15)', borderColor: 'rgba(236, 72, 153, 0.4)', color: '#F472B6', padding: '0.35rem 0.6rem', fontSize: '0.8rem' }}>
+                    <Mail size={14} />
+                    <span>Email Draft</span>
+                  </button>
+                )}
+                <button className="btn-secondary" onClick={handleExportMarkdown} title="Export to Markdown (.md)" style={{ padding: '0.35rem 0.6rem', fontSize: '0.8rem' }}>
+                  <FileText size={14} className="text-indigo-400" />
+                  <span>Markdown</span>
+                </button>
+                <button className="btn-secondary" onClick={handleExportPDF} title="Export / Print to PDF" style={{ padding: '0.35rem 0.6rem', fontSize: '0.8rem' }}>
+                  <Printer size={14} className="text-emerald-400" />
+                  <span>PDF</span>
+                </button>
+                <button className="btn-secondary" onClick={handleExportJira} title="Copy as Jira Markup" style={{ background: 'rgba(59, 130, 246, 0.15)', borderColor: 'rgba(59, 130, 246, 0.4)', color: '#60A5FA', padding: '0.35rem 0.6rem', fontSize: '0.8rem' }}>
+                  <FileCode2 size={14} />
+                  <span>Jira</span>
+                </button>
+                <button className="btn-secondary" onClick={handleCopyOutput} title="คัดลอกข้อความธรรมดา" style={{ padding: '0.35rem 0.6rem', fontSize: '0.8rem' }}>
+                  {copied ? <Check size={14} color="#10B981" /> : <Copy size={14} />}
+                  <span>{copied ? 'คัดลอกแล้ว' : 'คัดลอก'}</span>
                 </button>
               </div>
             )}
@@ -413,6 +523,48 @@ ${data.effortEstimation ? `h2. Effort & Cost Estimation
                     </div>
                   )}
 
+                  {/* Acceptance Criteria */}
+                  {translationResult.data.acceptanceCriteria && translationResult.data.acceptanceCriteria.length > 0 && (
+                    <div className="section-card" style={{ borderColor: 'rgba(16, 185, 129, 0.3)', background: 'rgba(16, 185, 129, 0.04)' }}>
+                      <div className="section-title" style={{ color: '#34D399' }}>
+                        <span>📋 เงื่อนไขการตรวจรับงาน (Acceptance Criteria)</span>
+                      </div>
+                      <ul className="bullet-list">
+                        {translationResult.data.acceptanceCriteria.map((ac, idx) => (
+                          <li key={idx} className="bullet-item" style={{ color: '#E2E8F0' }}>{ac}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Non-Functional Requirements */}
+                  {translationResult.data.nonFunctionalRequirements && translationResult.data.nonFunctionalRequirements.length > 0 && (
+                    <div className="section-card" style={{ borderColor: 'rgba(168, 85, 247, 0.3)', background: 'rgba(168, 85, 247, 0.04)' }}>
+                      <div className="section-title" style={{ color: '#C084FC' }}>
+                        <span>🛡️ ข้อกำหนดด้านประสิทธิภาพและความปลอดภัย (Non-Functional Requirements)</span>
+                      </div>
+                      <ul className="bullet-list">
+                        {translationResult.data.nonFunctionalRequirements.map((nfr, idx) => (
+                          <li key={idx} className="bullet-item" style={{ color: '#F3E8FF' }}>{nfr}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* API Draft Payload */}
+                  {translationResult.data.apiDraft && translationResult.data.apiDraft.length > 0 && (
+                    <div className="section-card" style={{ borderColor: 'rgba(56, 189, 248, 0.3)', background: 'rgba(15, 23, 42, 0.6)' }}>
+                      <div className="section-title" style={{ color: '#38BDF8' }}>
+                        <span>🔌 ร่างโครงสร้าง API & Data Payloads (API Specification Draft)</span>
+                      </div>
+                      <ul className="bullet-list">
+                        {translationResult.data.apiDraft.map((api, idx) => (
+                          <li key={idx} className="bullet-item" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#7DD3FC' }}>{api}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
                   {/* Suggested Questions */}
                   {translationResult.data.suggestedQuestions && translationResult.data.suggestedQuestions.length > 0 && (
                     <div className="section-card" style={{ borderColor: 'rgba(14, 165, 233, 0.3)', background: 'rgba(14, 165, 233, 0.05)' }}>
@@ -434,10 +586,30 @@ ${data.effortEstimation ? `h2. Effort & Cost Estimation
               {translationResult.mode === 'tech-to-human' && (
                 <div>
                   {/* Polite Explanation Box */}
-                  <div className="polite-text-box">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#34D399', fontWeight: '600', marginBottom: '0.5rem' }}>
-                      <MessageSquareText size={16} />
-                      <span>ข้อความสุภาพพร้อมส่งให้ลูกค้าอ่าน:</span>
+                  <div className="polite-text-box" style={{ position: 'relative' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#34D399', fontWeight: '600' }}>
+                        <MessageSquareText size={16} />
+                        <span>ข้อความสุภาพพร้อมส่งให้ลูกค้าอ่าน:</span>
+                      </div>
+                      <button
+                        className="btn-secondary"
+                        onClick={handleExportClientEmail}
+                        style={{
+                          background: 'rgba(236, 72, 153, 0.2)',
+                          borderColor: 'rgba(236, 72, 153, 0.5)',
+                          color: '#F472B6',
+                          padding: '0.25rem 0.6rem',
+                          fontSize: '0.75rem',
+                          borderRadius: '6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.3rem'
+                        }}
+                      >
+                        <Mail size={13} />
+                        <span>คัดลอกร่างอีเมล (Client Email Draft)</span>
+                      </button>
                     </div>
                     {translationResult.data.politeExplanation}
                   </div>

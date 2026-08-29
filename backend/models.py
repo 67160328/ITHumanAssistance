@@ -6,6 +6,8 @@ class TranslateRequest(BaseModel):
     mode: str = Field(..., description="โหมดการแปล: 'human-to-tech' หรือ 'tech-to-human'")
     api_key: Optional[str] = Field(None, description="Google Gemini API Key (ถ้าไม่ใส่จะใช้ Key หลักในระบบ)")
     project_context: Optional[str] = Field(None, description="บริบทของโปรเจกต์/Tech Stack ขององค์กร")
+    budget_level: Optional[str] = Field(None, description="ระดับงบประมาณ (Low, Medium, Enterprise)")
+    timeline_constraint: Optional[str] = Field(None, description="ข้อจำกัดด้านเวลา (เช่น Urgent <1wk, Standard 1mo)")
 
 
 class TechStackItem(BaseModel):
@@ -23,6 +25,9 @@ class HumanToTechData(BaseModel):
     techStack: List[TechStackItem]
     riskAnalysis: Optional[List[str]] = []
     suggestedQuestions: Optional[List[str]] = []
+    acceptanceCriteria: Optional[List[str]] = []
+    nonFunctionalRequirements: Optional[List[str]] = []
+    apiDraft: Optional[List[str]] = []
 
 class TechToHumanData(BaseModel):
     summary: str
