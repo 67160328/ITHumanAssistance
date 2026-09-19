@@ -43,7 +43,7 @@ export default function SettingsModal({ isOpen, onClose, onSave }) {
             <input
               type="password"
               className="custom-input"
-              placeholder="AQ.Ab8RN..."
+              placeholder="AIzaSy..."
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
             />

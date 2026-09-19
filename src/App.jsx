@@ -1,8 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PRESETS } from './data/presets';
 import { TECH_STACK_PRESETS } from './data/techStackPresets';
 import { translateText, getStoredApiKey } from './services/translator';
+import { getUser, isLoggedIn, logout } from './services/authService';
+import { getDocuments } from './services/documentService';
 import SettingsModal from './components/SettingsModal';
+import AuthModal from './components/AuthModal';
+import ChangePasswordModal from './components/ChangePasswordModal';
+import UserMenu from './components/UserMenu';
+import KnowledgeBaseModal from './components/KnowledgeBaseModal';
+import ImpactAnalysisCard from './components/ImpactAnalysisCard';
 import { downloadMarkdownFile, exportToPDF, generateJiraFormat, downloadOpenAPIJson, generateClientEmailDraft } from './utils/exportUtils';
 import {
   Sparkles,
@@ -25,7 +32,13 @@ import {
   Server,
   FileText,
   Printer,
-  Mail
+  Mail,
+  Shield,
+  ShieldCheck,
+  Database,
+  User,
+  Lock,
+  Radio
 } from 'lucide-react';
 
 export default function App() {
@@ -34,12 +47,35 @@ export default function App() {
   const [projectContext, setProjectContext] = useState('');
   const [budgetLevel, setBudgetLevel] = useState(''); // '', 'Low Budget', 'Medium Budget', 'Enterprise Budget'
   const [timelineConstraint, setTimelineConstraint] = useState(''); // '', 'Urgent (<1 week)', 'Standard (1 month)', 'Flexible'
+  
+  // Phase 2 Enterprise Controls
+  const [useRag, setUseRag] = useState(true);
+  const [sanitizePii, setSanitizePii] = useState(true);
+  const [securityMode, setSecurityMode] = useState('cloud'); // 'cloud' | 'private-local'
+
+  // Results & UI states
   const [translationResult, setTranslationResult] = useState(null);
   const [copied, setCopied] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Modals state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isKnowledgeBaseOpen, setIsKnowledgeBaseOpen] = useState(false);
+  
+  // Auth & Knowledge state
+  const [currentUser, setCurrentUser] = useState(getUser());
+  const [docCount, setDocCount] = useState(2);
   const [currentApiKey, setCurrentApiKey] = useState(getStoredApiKey());
+
+  useEffect(() => {
+    // Initial fetch of doc count
+    getDocuments().then(docs => {
+      if (docs && docs.length) setDocCount(docs.length);
+    }).catch(() => {});
+  }, []);
 
   const currentPresets = mode === 'human-to-tech' ? PRESETS.humanToTech : PRESETS.techToHuman;
 
@@ -47,7 +83,17 @@ export default function App() {
     if (!inputText.trim()) return;
     setIsLoading(true);
     try {
-      const result = await translateText(inputText, mode, currentApiKey, projectContext, budgetLevel, timelineConstraint);
+      const result = await translateText(
+        inputText,
+        mode,
+        currentApiKey,
+        projectContext,
+        budgetLevel,
+        timelineConstraint,
+        useRag,
+        sanitizePii,
+        securityMode
+      );
       setTranslationResult(result);
     } catch (err) {
       showToast('การแปลภาษาล้มเหลว: ' + err.message);
@@ -60,7 +106,17 @@ export default function App() {
     setInputText(preset.input);
     setIsLoading(true);
     try {
-      const result = await translateText(preset.input, mode, currentApiKey, projectContext, budgetLevel, timelineConstraint);
+      const result = await translateText(
+        preset.input,
+        mode,
+        currentApiKey,
+        projectContext,
+        budgetLevel,
+        timelineConstraint,
+        useRag,
+        sanitizePii,
+        securityMode
+      );
       setTranslationResult(result);
     } catch (err) {
       showToast('การแปลภาษาล้มเหลว: ' + err.message);
@@ -76,6 +132,12 @@ export default function App() {
     setTranslationResult(null);
   };
 
+  const handleLogout = async () => {
+    await logout();
+    setCurrentUser(null);
+    showToast('ออกจากระบบเรียบร้อยแล้ว');
+  };
+
   const handleCopyOutput = () => {
     if (!translationResult) return;
     let formattedText = '';
@@ -87,9 +149,9 @@ export default function App() {
         `\n\n🛠️ [แนะนำ Tech Stack]\n` +
         data.techStack.map(ts => `• ${ts.name}: ${ts.desc}`).join('\n') +
         `\n\n⚠️ [ข้อควรระวัง / ความเสี่ยง]\n` +
-        data.riskAnalysis.map(r => `• ${r}`).join('\n') +
+        data.riskAnalysis?.map(r => `• ${r}`).join('\n') +
         `\n\n❓ [คำถามที่ควรถามลูกค้าเพิ่ม]\n` +
-        data.suggestedQuestions.map(q => `• ${q}`).join('\n');
+        data.suggestedQuestions?.map(q => `• ${q}`).join('\n');
 
       if (data.effortEstimation) {
         formattedText += `\n\n⏱️ [การประเมินระยะเวลาและงบประมาณ (Effort Estimation)]\n` +
@@ -97,6 +159,13 @@ export default function App() {
           `• ระยะเวลาทำงาน: ${data.effortEstimation.estimatedManDays}\n` +
           `• งบประมาณโดยประมาณ: ${data.effortEstimation.estimatedCostRange}\n` +
           `• เหตุผล: ${data.effortEstimation.reasoning}`;
+      }
+
+      if (data.impactAnalysis) {
+        formattedText += `\n\n🏢 [วิเคราะห์ผลกระทบต่อระบบเดิม (Impact Analysis)]\n` +
+          `• โมดูลเดิมที่กระทบ: ${data.impactAnalysis.affectedModules?.join(', ') || 'ไม่มี'}\n` +
+          `• ตารางเดิมที่กระทบ: ${data.impactAnalysis.affectedTables?.join(', ') || 'ไม่มี'}\n` +
+          `• เวลา Refactoring: ${data.impactAnalysis.refactoringEffortDays}`;
       }
     } else {
       formattedText = `✉️ [คำอธิบายสำหรับส่งลูกค้า]\n${data.politeExplanation}\n\n💡 [เปรียบเสมือน]\n${data.analogy?.title || ''}\n${data.analogy?.description || ''}\n\n📌 [ผลกระทบต่อผู้ใช้งาน]\n${data.impact}\n\n⏱️ [ระยะเวลาแก้ไขโดยประมาณ]\n${data.estimatedTime}`;
@@ -157,14 +226,59 @@ export default function App() {
         }}
       />
 
+      {/* Auth Modal (Login / Register) */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onLoginSuccess={(username) => {
+          setCurrentUser(username);
+          showToast(`ยินดีต้อนรับคุณ ${username} เข้าสู่ระบบ!`);
+        }}
+      />
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+        username={currentUser}
+      />
+
+      {/* Corporate Knowledge Base Modal (RAG) */}
+      <KnowledgeBaseModal
+        isOpen={isKnowledgeBaseOpen}
+        onClose={() => setIsKnowledgeBaseOpen(false)}
+        onDocumentsUpdated={(count) => setDocCount(count)}
+      />
+
       {/* Header */}
       <header className="app-header">
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.8rem', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.6rem', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap' }}>
           <div className="header-badge" style={{ margin: 0 }}>
             <Sparkles size={16} />
-            <span>ระบบแปลภาษาไอทีอัจฉริยะ</span>
+            <span>ระบบแปลภาษาไอทีอัจฉริยะ (Enterprise Edition)</span>
           </div>
 
+          {/* Knowledge Base RAG Button */}
+          <button
+            className="settings-badge-btn"
+            style={{ borderColor: 'rgba(99, 102, 241, 0.4)', background: 'rgba(99, 102, 241, 0.15)', color: '#c7d2fe' }}
+            onClick={() => setIsKnowledgeBaseOpen(true)}
+          >
+            <Database size={14} color="#818cf8" />
+            <span>Corporate Knowledge Base</span>
+            <span style={{
+              fontSize: '0.7rem',
+              backgroundColor: '#6366f1',
+              color: '#fff',
+              padding: '1px 6px',
+              borderRadius: '9999px',
+              fontWeight: 600
+            }}>
+              {docCount} Docs (RAG)
+            </span>
+          </button>
+
+          {/* FastAPI Swagger Link */}
           <a
             href="http://localhost:8000/docs"
             target="_blank"
@@ -173,16 +287,17 @@ export default function App() {
             style={{ textDecoration: 'none' }}
           >
             <Server size={14} className="text-emerald-400" />
-            <span>FastAPI Swagger Docs (/docs)</span>
+            <span>FastAPI Swagger (/docs)</span>
             <FileCode2 size={14} />
           </a>
 
+          {/* Settings / API Key button */}
           <button className="settings-badge-btn" onClick={() => setIsSettingsOpen(true)}>
             {currentApiKey ? (
               <>
                 <span className="status-dot online"></span>
                 <Bot size={15} />
-                <span>Google Gemini AI Active</span>
+                <span>Google Gemini AI</span>
               </>
             ) : (
               <>
@@ -192,11 +307,29 @@ export default function App() {
             )}
             <Settings size={14} style={{ marginLeft: '4px' }} />
           </button>
+
+          {/* User Auth Menu */}
+          {currentUser ? (
+            <UserMenu
+              username={currentUser}
+              onChangePassword={() => setIsChangePasswordOpen(true)}
+              onLogout={handleLogout}
+            />
+          ) : (
+            <button
+              className="settings-badge-btn"
+              style={{ background: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.4)', color: '#34d399' }}
+              onClick={() => setIsAuthModalOpen(true)}
+            >
+              <User size={14} />
+              <span>เข้าสู่ระบบ / สมัครสมาชิก</span>
+            </button>
+          )}
         </div>
 
         <h1 className="header-title">IT-to-Human Translator</h1>
         <p className="header-subtitle">
-          โครงงานวิชา Web Application: แปลงภาษาคนทั่วไปให้เป็น Technical Requirements และแปลงศัพท์เทคนิคให้เป็นข้อความสุภาพด้วย FastAPI, Docker & Gemini AI
+          Enterprise AI Platform: เชื่อมช่องว่างระหว่าง Non-Tech และ Tech ด้วย RAG Corporate Knowledge Base, PII Sanitizer Guardrails, และ Legacy Impact Analysis
         </p>
       </header>
 
@@ -250,7 +383,7 @@ export default function App() {
 
           {/* Presets chips */}
           <div className="preset-chip-list">
-            <span className="preset-chip-title">💡 ตัวอย่างเคสทดสอบ (FastAPI REST Endpoint):</span>
+            <span className="preset-chip-title">💡 ตัวอย่างเคสทดสอบ (Enterprise Context):</span>
             {currentPresets.map((preset) => (
               <div
                 key={preset.id}
@@ -264,7 +397,7 @@ export default function App() {
           </div>
 
           {/* Project Context Field */}
-          <div style={{ marginBottom: '1rem' }}>
+          <div style={{ marginBottom: '0.8rem' }}>
             <label style={{ display: 'block', fontSize: '0.85rem', color: '#94A3B8', marginBottom: '0.4rem', fontWeight: '500' }}>
               🏢 Project Context / Corporate Tech Stack:
             </label>
@@ -295,7 +428,7 @@ export default function App() {
             <input
               type="text"
               className="custom-textarea"
-              style={{ minHeight: '42px', padding: '0.5rem 0.8rem', height: '42px' }}
+              style={{ minHeight: '40px', padding: '0.5rem 0.8rem', height: '40px' }}
               placeholder="เลือก Preset ด้านบน หรือพิมพ์ เช่น Python FastAPI + PostgreSQL..."
               value={projectContext}
               onChange={(e) => setProjectContext(e.target.value)}
@@ -357,14 +490,71 @@ export default function App() {
             </div>
           </div>
 
+          {/* Phase 2: Enterprise Security Guardrails & RAG Switches */}
+          <div style={{
+            backgroundColor: 'rgba(15, 23, 42, 0.5)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: '10px',
+            padding: '0.65rem 0.85rem',
+            marginBottom: '0.8rem',
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.5rem'
+          }}>
+            {/* RAG Knowledge Switch */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.78rem', color: '#c7d2fe' }}>
+              <input
+                type="checkbox"
+                checked={useRag}
+                onChange={(e) => setUseRag(e.target.checked)}
+                style={{ accentColor: '#6366f1' }}
+              />
+              <Database size={14} color="#818cf8" />
+              <span>ดึงบริบทจาก Knowledge Base (RAG)</span>
+            </label>
+
+            {/* PII Sanitizer Switch */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.78rem', color: '#34d399' }}>
+              <input
+                type="checkbox"
+                checked={sanitizePii}
+                onChange={(e) => setSanitizePii(e.target.checked)}
+                style={{ accentColor: '#10b981' }}
+              />
+              <ShieldCheck size={14} color="#34d399" />
+              <span>Mask ข้อมูลสำคัญ (PII / API Key)</span>
+            </label>
+
+            {/* Security Mode Selector */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', color: '#94a3b8' }}>
+              <button
+                type="button"
+                onClick={() => setSecurityMode(securityMode === 'cloud' ? 'private-local' : 'cloud')}
+                style={{
+                  backgroundColor: securityMode === 'cloud' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(168, 85, 247, 0.2)',
+                  color: securityMode === 'cloud' ? '#60a5fa' : '#c084fc',
+                  border: `1px solid ${securityMode === 'cloud' ? 'rgba(59, 130, 246, 0.4)' : 'rgba(168, 85, 247, 0.4)'}`,
+                  borderRadius: '4px',
+                  padding: '2px 8px',
+                  fontSize: '0.72rem',
+                  cursor: 'pointer'
+                }}
+              >
+                {securityMode === 'cloud' ? '☁️ Cloud AI Mode' : '🔒 On-Premise / Private Mode'}
+              </button>
+            </div>
+          </div>
+
           {/* Text Area */}
           <div className="input-textarea-wrapper">
             <textarea
               className="custom-textarea"
               placeholder={
                 mode === 'human-to-tech'
-                  ? 'พิมพ์ความต้องการของลูกค้าที่นี่ เช่น "อยากได้ปุ่มวิบวับสวยๆ", "อยากได้เว็บแบบ Shopee ทำเสร็จใน 3 วัน"...'
-                  : 'พิมพ์ปัญหา หรือศัพท์เทคนิคโปรแกรมเมอร์ที่นี่ เช่น "ตอนนี้เจอ CORS error บน staging และ N+1 query ทำให้ API ช้ากว่า 5 วินาที"...'
+                  ? 'พิมพ์ความต้องการของลูกค้า เช่น "อยากได้ระบบตัดเงินผ่าน PromptPay และยิงแจ้งเตือนเข้า LINE เมื่อมีคนสั่งซื้อ"...'
+                  : 'พิมพ์ปัญหา หรือศัพท์เทคนิคโปรแกรมเมอร์ เช่น "ตอนนี้เจอ CORS error บน staging และ N+1 query ทำให้ API ช้ากว่า 5 วินาที"...'
               }
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
@@ -379,7 +569,7 @@ export default function App() {
           <div className="action-bar">
             <button className="btn-primary" onClick={handleTranslate} disabled={isLoading}>
               {isLoading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRightLeft size={18} />}
-              <span>{isLoading ? 'กำลังประมวลผลด้วย FastAPI & Gemini AI...' : 'เริ่มแปลภาษาตามโหมด'}</span>
+              <span>{isLoading ? 'กำลังประมวลผลด้วย FastAPI & RAG Engine...' : 'เริ่มแปลภาษาตามโหมด'}</span>
             </button>
           </div>
         </div>
@@ -389,11 +579,11 @@ export default function App() {
           <div className="panel-title">
             <div className="panel-title-left">
               <Sparkles size={20} className="text-purple-400" />
-              <span>ผลลัพธ์การแปล (FastAPI JSON Output)</span>
+              <span>ผลลัพธ์การแปล (Enterprise JSON Output)</span>
               {translationResult?.isAi && (
                 <span className="ai-badge">
                   <Bot size={12} />
-                  <span>Gemini AI + FastAPI</span>
+                  <span>Gemini AI + RAG</span>
                 </span>
               )}
             </div>
@@ -435,7 +625,7 @@ export default function App() {
             <div className="output-empty">
               <Loader2 className="empty-icon animate-spin text-indigo-400" />
               <h3 style={{ color: '#A5B4FC' }}>FastAPI Backend กำลังประมวลผล...</h3>
-              <p>ระบบกำลังเรียกใช้ Pydantic Validation และ Gemini AI Service</p>
+              <p>ระบบกำลังเรียกใช้ RAG Ingestion, PII Sanitizer และ Gemini AI Engine</p>
             </div>
           ) : !translationResult ? (
             <div className="output-empty">
@@ -445,6 +635,15 @@ export default function App() {
             </div>
           ) : (
             <div>
+              {/* Phase 2: Corporate Legacy Impact Analysis & RAG Context Card */}
+              {translationResult.mode === 'human-to-tech' && (
+                <ImpactAnalysisCard
+                  impactAnalysis={translationResult.data?.impactAnalysis}
+                  ragSources={translationResult.ragSources}
+                  maskedItems={translationResult.maskedItems}
+                />
+              )}
+
               {/* Mode 1: Human-to-Tech View */}
               {translationResult.mode === 'human-to-tech' && (
                 <div>

@@ -3,7 +3,7 @@ import hashlib
 import secrets
 from fastapi import FastAPI, HTTPException, status, Header
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 
 from backend.models import (
     TranslateRequest,
@@ -11,14 +11,28 @@ from backend.models import (
     UserRegisterRequest,
     UserLoginRequest,
     ChangePasswordRequest,
-    AuthResponse
+    AuthResponse,
+    DocumentUploadRequest,
+    DocumentItem,
+    RAGSearchRequest,
+    RAGSearchResult,
+    SanitizeRequest,
+    SanitizeResponse
 )
-from backend.services import translate_with_gemini
+from backend.services import (
+    translate_with_gemini,
+    sanitize_text,
+    ingest_document,
+    delete_document,
+    search_rag_context,
+    documents_db,
+    chunks_db
+)
 
 app = FastAPI(
-    title="IT-to-Human Translator API",
-    description="REST API สำหรับบริการล่ามแปลภาษาไอทีอัจฉริยะ พัฒนาด้วย FastAPI, Authentication & Google Gemini AI",
-    version="1.1.0"
+    title="IT-to-Human Translator Enterprise API",
+    description="REST API สำหรับบริการล่ามแปลภาษาไอทีอัจฉริยะระดับองค์กร พร้อม RAG Corporate Knowledge Base, PII Sanitizer Guardrails, Impact Analysis & Authentication",
+    version="2.0.0"
 )
 
 # CORS Middleware
@@ -30,7 +44,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory Databases
+# In-memory Translation History
 history_db: List[Dict] = []
 next_history_id = 1
 
@@ -47,8 +61,11 @@ def health_check():
     """Endpoint สำหรับตรวจสอบสถานะของ API Service (Health Check)"""
     return {
         "status": "ok",
-        "service": "IT-to-Human Translator API",
+        "service": "IT-to-Human Translator Enterprise API",
         "framework": "FastAPI",
+        "version": "2.0.0 (Phase 2 Integrated)",
+        "documents_count": len(documents_db),
+        "chunks_count": len(chunks_db),
         "timestamp": datetime.datetime.now().isoformat()
     }
 
@@ -156,12 +173,77 @@ def change_password(req: ChangePasswordRequest):
     )
 
 # ==============================================================================
+# CORPORATE KNOWLEDGE BASE & RAG ENDPOINTS (Phase 2)
+# ==============================================================================
+
+@app.get("/api/documents", tags=["Corporate Knowledge Base (RAG)"])
+def list_documents():
+    """ดูรายการเอกสารโปรเจกต์ทั้งหมดใน Corporate Knowledge Base"""
+    docs_list = list(documents_db.values())
+    return {
+        "total": len(docs_list),
+        "total_chunks": len(chunks_db),
+        "documents": docs_list
+    }
+
+@app.post("/api/documents", status_code=status.HTTP_201_CREATED, tags=["Corporate Knowledge Base (RAG)"])
+def upload_document(req: DocumentUploadRequest):
+    """อัปโหลดและประมวลผลเอกสารเข้าสู่ระบบ Knowledge Base พร้อมทำ Auto-chunking สำหรับ RAG"""
+    doc = ingest_document(
+        title=req.title,
+        content=req.content,
+        doc_type=req.doc_type or "markdown",
+        tags=req.tags or []
+    )
+    return {
+        "success": True,
+        "message": f"อัปโหลดและสร้าง {doc['chunk_count']} Chunks สำหรับ '{req.title}' เรียบร้อยแล้ว",
+        "document": doc
+    }
+
+@app.delete("/api/documents/{doc_id}", tags=["Corporate Knowledge Base (RAG)"])
+def remove_document(doc_id: str):
+    """ลบเอกสารออกจาก Corporate Knowledge Base"""
+    success = delete_document(doc_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"ไม่พบเอกสารรหัส {doc_id}")
+    return {"success": True, "message": f"ลบเอกสาร {doc_id} เรียบร้อยแล้ว"}
+
+@app.post("/api/documents/rag-search", tags=["Corporate Knowledge Base (RAG)"])
+def rag_search(req: RAGSearchRequest):
+    """ทดสอบค้นหา RAG Context Chunks จาก Knowledge Base"""
+    results = search_rag_context(req.query, top_k=req.top_k or 3)
+    return {
+        "query": req.query,
+        "total_results": len(results),
+        "results": results
+    }
+
+# ==============================================================================
+# ENTERPRISE SECURITY & PII SANITIZER ENDPOINTS (Phase 2)
+# ==============================================================================
+
+@app.post("/api/security/sanitize", response_model=SanitizeResponse, tags=["Enterprise Security"])
+def sanitize_endpoint(req: SanitizeRequest):
+    """สแกนและ Mask ข้อมูลสำคัญ (API Key, PII, รหัสผ่าน, เบอร์โทร, เลขบัตรประชาชน)"""
+    sanitized, masked = sanitize_text(req.text)
+    return SanitizeResponse(
+        original_text=req.text,
+        sanitized_text=sanitized,
+        masked_items=masked,
+        has_pii=len(masked) > 0
+    )
+
+# ==============================================================================
 # TRANSLATION & CRUD ENDPOINTS
 # ==============================================================================
 
 @app.post("/api/translate", response_model=TranslateResponse, tags=["Translation Core"])
 async def translate(req: TranslateRequest):
-    """ส่งข้อความเข้าแปลผ่าน Gemini AI / Service layer"""
+    """
+    ส่งข้อความเข้าแปลผ่าน Gemini AI / RAG Context Retrieval / PII Sanitizer
+    พร้อมสร้าง Legacy Impact Analysis
+    """
     global next_history_id
     if req.mode not in ["human-to-tech", "tech-to-human"]:
         raise HTTPException(
@@ -169,13 +251,16 @@ async def translate(req: TranslateRequest):
             detail="Mode ต้องเป็น 'human-to-tech' หรือ 'tech-to-human' เท่านั้น"
         )
 
-    translated_data, is_ai = await translate_with_gemini(
-        req.input_text,
-        req.mode,
-        req.api_key,
-        req.project_context,
-        req.budget_level,
-        req.timeline_constraint
+    translated_data, is_ai, sanitized_txt, masked_items, rag_sources = await translate_with_gemini(
+        input_text=req.input_text,
+        mode=req.mode,
+        api_key=req.api_key,
+        project_context=req.project_context,
+        budget_level=req.budget_level,
+        timeline_constraint=req.timeline_constraint,
+        use_rag=req.use_rag if req.use_rag is not None else True,
+        sanitize_pii=req.sanitize_pii if req.sanitize_pii is not None else True,
+        security_mode=req.security_mode or "cloud"
     )
 
     history_entry = {
@@ -183,7 +268,8 @@ async def translate(req: TranslateRequest):
         "input_text": req.input_text,
         "mode": req.mode,
         "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "summary": translated_data.get("summary", "")
+        "summary": translated_data.get("summary", ""),
+        "has_impact_analysis": "impactAnalysis" in translated_data
     }
     history_db.insert(0, history_entry)
     next_history_id += 1
@@ -191,6 +277,9 @@ async def translate(req: TranslateRequest):
     return TranslateResponse(
         mode=req.mode,
         source_input=req.input_text,
+        sanitized_input=sanitized_txt,
+        masked_items=masked_items,
+        rag_sources=rag_sources,
         is_ai=is_ai,
         data=translated_data
     )
