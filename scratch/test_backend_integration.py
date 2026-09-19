@@ -14,11 +14,14 @@ def test_health():
     assert data["status"] == "ok"
     assert "documents_count" in data
 
+import time
+
 def test_auth_flow():
+    uname = f"testuser_{int(time.time())}"
     # 1. Register
     reg_res = client.post("/api/register", json={
-        "username": "testuser_enterprise",
-        "email": "enterprise@test.com",
+        "username": uname,
+        "email": f"{uname}@test.com",
         "password": "Password123"
     })
     assert reg_res.status_code == 201
@@ -26,7 +29,7 @@ def test_auth_flow():
 
     # 2. Login
     login_res = client.post("/api/login", json={
-        "username": "testuser_enterprise",
+        "username": uname,
         "password": "Password123"
     })
     assert login_res.status_code == 200
@@ -35,7 +38,7 @@ def test_auth_flow():
 
     # 3. Change password
     chg_res = client.post("/api/change-password", json={
-        "username": "testuser_enterprise",
+        "username": uname,
         "old_password": "Password123",
         "new_password": "NewPassword456"
     })
