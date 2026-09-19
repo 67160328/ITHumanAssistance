@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException, status, Header
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Optional, Any
 
+from backend.database import get_db_connection, init_db
 from backend.models import (
     TranslateRequest,
     TranslateResponse,
@@ -23,16 +24,19 @@ from backend.services import (
     translate_with_gemini,
     sanitize_text,
     ingest_document,
+    get_all_documents,
+    get_chunks_count,
     delete_document,
-    search_rag_context,
-    documents_db,
-    chunks_db
+    search_rag_context
 )
+
+# Ensure database tables exist
+init_db()
 
 app = FastAPI(
     title="IT-to-Human Translator Enterprise API",
-    description="REST API สำหรับบริการล่ามแปลภาษาไอทีอัจฉริยะระดับองค์กร พร้อม RAG Corporate Knowledge Base, PII Sanitizer Guardrails, Impact Analysis & Authentication",
-    version="2.0.0"
+    description="REST API สำหรับบริการล่ามแปลภาษาไอทีอัจฉริยะระดับองค์กร พร้อม SQLite Database, RAG Corporate Knowledge Base, PII Sanitizer Guardrails, Impact Analysis & Authentication",
+    version="2.1.0"
 )
 
 # CORS Middleware
@@ -44,55 +48,57 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory Translation History
-history_db: List[Dict] = []
-next_history_id = 1
-
-# User DB: { username: { "username": str, "email": str, "password_hash": str } }
-users_db: Dict[str, Dict] = {}
-# Active Sessions: { token: username }
-sessions_db: Dict[str, str] = {}
-
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode('utf-8')).hexdigest()
 
 @app.get("/health", tags=["Health Check"])
 def health_check():
-    """Endpoint สำหรับตรวจสอบสถานะของ API Service (Health Check)"""
+    """Endpoint สำหรับตรวจสอบสถานะของ API Service และการเชื่อมต่อ SQLite Database"""
+    docs = get_all_documents()
+    chunks_count = get_chunks_count()
     return {
         "status": "ok",
         "service": "IT-to-Human Translator Enterprise API",
         "framework": "FastAPI",
-        "version": "2.0.0 (Phase 2 Integrated)",
-        "documents_count": len(documents_db),
-        "chunks_count": len(chunks_db),
+        "database": "SQLite (app.db - Connected)",
+        "version": "2.1.0 (SQLite Database Integrated)",
+        "documents_count": len(docs),
+        "chunks_count": chunks_count,
         "timestamp": datetime.datetime.now().isoformat()
     }
 
 # ==============================================================================
-# AUTHENTICATION ENDPOINTS (POST /register, /login, /logout, /change-password)
+# AUTHENTICATION ENDPOINTS (SQLite Persistent)
 # ==============================================================================
 
 @app.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED, tags=["Authentication"])
 @app.post("/api/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED, tags=["Authentication"])
 def register_user(req: UserRegisterRequest):
     """
-    1. POST /register - สมัครสมาชิกใหม่
-    - ตรวจสอบว่าชื่อผู้ใช้ถูกใช้งานไปแล้วหรือยัง
-    - บันทึกชื่อผู้ใช้, อีเมล และรหัสผ่านที่ผ่านการ Hash แล้ว
+    1. POST /register - สมัครสมาชิกใหม่ (บันทึกลง SQLite Database)
     """
-    if req.username in users_db:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id FROM users WHERE username = ?", (req.username,))
+    existing_user = cursor.fetchone()
+    if existing_user:
+        conn.close()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"ชื่อผู้ใช้ '{req.username}' มีอยู่ในระบบแล้ว"
         )
     
-    users_db[req.username] = {
-        "username": req.username,
-        "email": req.email,
-        "password_hash": hash_password(req.password),
-        "created_at": datetime.datetime.now().isoformat()
-    }
+    created_at = datetime.datetime.now().isoformat()
+    pwd_hash = hash_password(req.password)
+    
+    cursor.execute("""
+        INSERT INTO users (username, email, password_hash, created_at)
+        VALUES (?, ?, ?, ?)
+    """, (req.username, req.email, pwd_hash, created_at))
+    
+    conn.commit()
+    conn.close()
     
     return AuthResponse(
         success=True,
@@ -104,20 +110,32 @@ def register_user(req: UserRegisterRequest):
 @app.post("/api/login", response_model=AuthResponse, tags=["Authentication"])
 def login_user(req: UserLoginRequest):
     """
-    2. POST /login - เข้าสู่ระบบ
-    - ตรวจสอบชื่อผู้ใช้และรหัสผ่าน
-    - ออก Access Token สำหรับใช้งานใน Session
+    2. POST /login - เข้าสู่ระบบ (ตรวจสอบจาก SQLite Database และออก Session Token)
     """
-    user = users_db.get(req.username)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT username, password_hash FROM users WHERE username = ?", (req.username,))
+    user = cursor.fetchone()
+
     if not user or user["password_hash"] != hash_password(req.password):
+        conn.close()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"
         )
     
-    # Generate session token
+    # Generate and store session token
     token = secrets.token_hex(16)
-    sessions_db[token] = req.username
+    created_at = datetime.datetime.now().isoformat()
+
+    cursor.execute("""
+        INSERT OR REPLACE INTO sessions (token, username, created_at)
+        VALUES (?, ?, ?)
+    """, (token, req.username, created_at))
+
+    conn.commit()
+    conn.close()
     
     return AuthResponse(
         success=True,
@@ -130,13 +148,15 @@ def login_user(req: UserLoginRequest):
 @app.post("/api/logout", response_model=AuthResponse, tags=["Authentication"])
 def logout_user(authorization: Optional[str] = Header(None)):
     """
-    3. POST /logout - ออกจากระบบ
-    - ยกเลิก Token/Session ปัจจุบัน
+    3. POST /logout - ออกจากระบบ (ลบ Token Session ออกจาก SQLite)
     """
     if authorization and authorization.startswith("Bearer "):
         token = authorization.split(" ")[1]
-        if token in sessions_db:
-            del sessions_db[token]
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM sessions WHERE token = ?", (token,))
+        conn.commit()
+        conn.close()
     
     return AuthResponse(
         success=True,
@@ -147,24 +167,32 @@ def logout_user(authorization: Optional[str] = Header(None)):
 @app.post("/api/change-password", response_model=AuthResponse, tags=["Authentication"])
 def change_password(req: ChangePasswordRequest):
     """
-    4. POST /change-password - เปลี่ยนรหัสผ่าน
-    - ตรวจสอบว่ามีผู้ใช้นี้อยู่จริงหรือไม่
-    - ยืนยันรหัสผ่านเดิมถูกต้องก่อนอัปเดตรหัสผ่านใหม่
+    4. POST /change-password - เปลี่ยนรหัสผ่าน (อัปเดตลง SQLite Database)
     """
-    user = users_db.get(req.username)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT username, password_hash FROM users WHERE username = ?", (req.username,))
+    user = cursor.fetchone()
+
     if not user:
+        conn.close()
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"ไม่พบผู้ใช้ '{req.username}' ในระบบ"
         )
     
     if user["password_hash"] != hash_password(req.old_password):
+        conn.close()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="รหัสผ่านเดิมไม่ถูกต้อง"
         )
     
-    user["password_hash"] = hash_password(req.new_password)
+    new_hash = hash_password(req.new_password)
+    cursor.execute("UPDATE users SET password_hash = ? WHERE username = ?", (new_hash, req.username))
+    conn.commit()
+    conn.close()
     
     return AuthResponse(
         success=True,
@@ -173,22 +201,23 @@ def change_password(req: ChangePasswordRequest):
     )
 
 # ==============================================================================
-# CORPORATE KNOWLEDGE BASE & RAG ENDPOINTS (Phase 2)
+# CORPORATE KNOWLEDGE BASE & RAG ENDPOINTS (SQLite Persistent)
 # ==============================================================================
 
 @app.get("/api/documents", tags=["Corporate Knowledge Base (RAG)"])
 def list_documents():
-    """ดูรายการเอกสารโปรเจกต์ทั้งหมดใน Corporate Knowledge Base"""
-    docs_list = list(documents_db.values())
+    """ดูรายการเอกสารโปรเจกต์ทั้งหมดใน Corporate Knowledge Base (SQLite)"""
+    docs_list = get_all_documents()
+    chunks_count = get_chunks_count()
     return {
         "total": len(docs_list),
-        "total_chunks": len(chunks_db),
+        "total_chunks": chunks_count,
         "documents": docs_list
     }
 
 @app.post("/api/documents", status_code=status.HTTP_201_CREATED, tags=["Corporate Knowledge Base (RAG)"])
 def upload_document(req: DocumentUploadRequest):
-    """อัปโหลดและประมวลผลเอกสารเข้าสู่ระบบ Knowledge Base พร้อมทำ Auto-chunking สำหรับ RAG"""
+    """อัปโหลดและบันทึกเอกสารลง SQLite Knowledge Base พร้อมสร้าง RAG Chunks"""
     doc = ingest_document(
         title=req.title,
         content=req.content,
@@ -197,21 +226,21 @@ def upload_document(req: DocumentUploadRequest):
     )
     return {
         "success": True,
-        "message": f"อัปโหลดและสร้าง {doc['chunk_count']} Chunks สำหรับ '{req.title}' เรียบร้อยแล้ว",
+        "message": f"อัปโหลดและบันทึก {doc['chunk_count']} Chunks สำหรับ '{req.title}' ลงฐานข้อมูลเรียบร้อยแล้ว",
         "document": doc
     }
 
 @app.delete("/api/documents/{doc_id}", tags=["Corporate Knowledge Base (RAG)"])
 def remove_document(doc_id: str):
-    """ลบเอกสารออกจาก Corporate Knowledge Base"""
+    """ลบเอกสารออกจาก SQLite Knowledge Base"""
     success = delete_document(doc_id)
     if not success:
         raise HTTPException(status_code=404, detail=f"ไม่พบเอกสารรหัส {doc_id}")
-    return {"success": True, "message": f"ลบเอกสาร {doc_id} เรียบร้อยแล้ว"}
+    return {"success": True, "message": f"ลบเอกสาร {doc_id} ออกจากฐานข้อมูลเรียบร้อยแล้ว"}
 
 @app.post("/api/documents/rag-search", tags=["Corporate Knowledge Base (RAG)"])
 def rag_search(req: RAGSearchRequest):
-    """ทดสอบค้นหา RAG Context Chunks จาก Knowledge Base"""
+    """ทดสอบค้นหา RAG Context Chunks จาก SQLite Knowledge Base"""
     results = search_rag_context(req.query, top_k=req.top_k or 3)
     return {
         "query": req.query,
@@ -220,7 +249,7 @@ def rag_search(req: RAGSearchRequest):
     }
 
 # ==============================================================================
-# ENTERPRISE SECURITY & PII SANITIZER ENDPOINTS (Phase 2)
+# ENTERPRISE SECURITY & PII SANITIZER ENDPOINTS
 # ==============================================================================
 
 @app.post("/api/security/sanitize", response_model=SanitizeResponse, tags=["Enterprise Security"])
@@ -235,16 +264,15 @@ def sanitize_endpoint(req: SanitizeRequest):
     )
 
 # ==============================================================================
-# TRANSLATION & CRUD ENDPOINTS
+# TRANSLATION & CRUD ENDPOINTS (SQLite Persistent History)
 # ==============================================================================
 
 @app.post("/api/translate", response_model=TranslateResponse, tags=["Translation Core"])
 async def translate(req: TranslateRequest):
     """
     ส่งข้อความเข้าแปลผ่าน Gemini AI / RAG Context Retrieval / PII Sanitizer
-    พร้อมสร้าง Legacy Impact Analysis
+    และบันทึกประวัติการแปลลง SQLite Database ถาวร
     """
-    global next_history_id
     if req.mode not in ["human-to-tech", "tech-to-human"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -263,16 +291,18 @@ async def translate(req: TranslateRequest):
         security_mode=req.security_mode or "cloud"
     )
 
-    history_entry = {
-        "id": next_history_id,
-        "input_text": req.input_text,
-        "mode": req.mode,
-        "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "summary": translated_data.get("summary", ""),
-        "has_impact_analysis": "impactAnalysis" in translated_data
-    }
-    history_db.insert(0, history_entry)
-    next_history_id += 1
+    created_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    summary = translated_data.get("summary", "")
+    has_impact = 1 if "impactAnalysis" in translated_data else 0
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO history (input_text, mode, summary, has_impact_analysis, created_at)
+        VALUES (?, ?, ?, ?, ?)
+    """, (req.input_text, req.mode, summary, has_impact, created_at))
+    conn.commit()
+    conn.close()
 
     return TranslateResponse(
         mode=req.mode,
@@ -286,22 +316,36 @@ async def translate(req: TranslateRequest):
 
 @app.get("/api/history", tags=["History Management (CRUD)"])
 def get_history():
-    """ดูประวัติการแปลทั้งหมด (Read)"""
-    return {"total": len(history_db), "history": history_db}
+    """ดูประวัติการแปลทั้งหมดจาก SQLite Database (Read)"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, input_text, mode, summary, created_at, has_impact_analysis FROM history ORDER BY id DESC")
+    rows = cursor.fetchall()
+    conn.close()
+
+    history_list = [dict(r) for r in rows]
+    return {"total": len(history_list), "history": history_list}
 
 @app.delete("/api/history/{history_id}", status_code=status.HTTP_200_OK, tags=["History Management (CRUD)"])
 def delete_history(history_id: int):
-    """ลบประวัติการแปลตาม ID (Delete)"""
-    global history_db
-    initial_len = len(history_db)
-    history_db = [item for item in history_db if item["id"] != history_id]
-    if len(history_db) == initial_len:
+    """ลบประวัติการแปลตาม ID จาก SQLite Database (Delete)"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM history WHERE id = ?", (history_id,))
+    changes = conn.total_changes
+    conn.commit()
+    conn.close()
+
+    if changes == 0:
         raise HTTPException(status_code=404, detail=f"ไม่พบประวัติ ID {history_id}")
-    return {"message": f"ลบประวัติ ID {history_id} เรียบร้อยแล้ว"}
+    return {"message": f"ลบประวัติ ID {history_id} ออกจากฐานข้อมูลเรียบร้อยแล้ว"}
 
 @app.delete("/api/history", status_code=status.HTTP_200_OK, tags=["History Management (CRUD)"])
 def clear_all_history():
-    """ล้างประวัติการแปลทั้งหมด"""
-    global history_db
-    history_db.clear()
-    return {"message": "ล้างประวัติการแปลเรียบร้อยแล้ว"}
+    """ล้างประวัติการแปลทั้งหมดใน SQLite Database"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM history")
+    conn.commit()
+    conn.close()
+    return {"message": "ล้างประวัติการแปลในฐานข้อมูลเรียบร้อยแล้ว"}

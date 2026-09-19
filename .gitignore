@@ -15,6 +15,7 @@ venv/
 *.pdf
 *.log
 *.zip
+*.db
 
 # OS / Editor files
 .DS_Store

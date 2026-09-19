@@ -7,6 +7,9 @@ import math
 import httpx
 from typing import Dict, Any, List, Tuple
 from collections import Counter
+from backend.database import get_db_connection, init_db
+
+init_db()
 
 SYSTEM_PROMPT = """คุณคือ "ล่ามแปลภาษาไอทีอัจฉริยะระดับองค์กร (Enterprise IT-to-Human Translator & Architecture Advisor)" ผู้เชี่ยวชาญด้านวิทยาการคอมพิวเตอร์ สถาปัตยกรรมซอฟต์แวร์ และการบริหารจัดการโปรเจกต์ซอฟต์แวร์
 
@@ -86,14 +89,8 @@ def sanitize_text(text: str) -> Tuple[str, List[Dict[str, str]]]:
 
 
 # ==============================================================================
-# 2. CORPORATE KNOWLEDGE BASE & RAG RETRIEVAL ENGINE
+# 2. CORPORATE KNOWLEDGE BASE & RAG RETRIEVAL ENGINE (SQLite Persistent)
 # ==============================================================================
-
-# In-Memory Corporate Knowledge Base
-# documents: { doc_id: { id, title, content, doc_type, tags, created_at, chunk_count, preview } }
-documents_db: Dict[str, Dict[str, Any]] = {}
-# chunks: [ { id, doc_id, doc_title, chunk_index, text, word_set, tf_idf_vector } ]
-chunks_db: List[Dict[str, Any]] = []
 
 def tokenize(text: str) -> List[str]:
     """แยกคำอย่างง่ายสำหรับภาษาไทยและอังกฤษ"""
@@ -111,7 +108,6 @@ def chunk_text(content: str, chunk_size: int = 600, overlap: int = 100) -> List[
     start = 0
     while start < len(content):
         end = min(start + chunk_size, len(content))
-        # Look for newline or period near the cut point
         if end < len(content):
             split_pos = content.rfind('\n', start + chunk_size // 2, end)
             if split_pos == -1:
@@ -127,15 +123,34 @@ def chunk_text(content: str, chunk_size: int = 600, overlap: int = 100) -> List[
     return chunks
 
 def ingest_document(title: str, content: str, doc_type: str = "markdown", tags: List[str] = None) -> Dict[str, Any]:
-    """นำเอกสารเข้าสู่ระบบ Knowledge Base และสร้าง Chunks สำหรับ RAG"""
-    global documents_db, chunks_db
+    """บันทึกเอกสารและ Chunks ลงใน SQLite Database ถาวร"""
     doc_id = str(uuid.uuid4())[:8]
     created_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     tags = tags or []
+    tags_json = json.dumps(tags, ensure_ascii=False)
 
     text_chunks = chunk_text(content)
-    
-    doc_entry = {
+    preview = content[:180] + ("..." if len(content) > 180 else "")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO documents (id, title, content, doc_type, tags, chunk_count, preview, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (doc_id, title, content, doc_type, tags_json, len(text_chunks), preview, created_at))
+
+    for idx, c_text in enumerate(text_chunks):
+        chunk_id = f"{doc_id}-{idx}"
+        cursor.execute("""
+            INSERT INTO rag_chunks (id, doc_id, doc_title, chunk_index, chunk_text)
+            VALUES (?, ?, ?, ?, ?)
+        """, (chunk_id, doc_id, title, idx, c_text))
+
+    conn.commit()
+    conn.close()
+
+    return {
         "id": doc_id,
         "title": title,
         "content": content,
@@ -143,63 +158,100 @@ def ingest_document(title: str, content: str, doc_type: str = "markdown", tags: 
         "tags": tags,
         "created_at": created_at,
         "chunk_count": len(text_chunks),
-        "preview": content[:180] + ("..." if len(content) > 180 else "")
+        "preview": preview
     }
-    documents_db[doc_id] = doc_entry
 
-    for idx, c_text in enumerate(text_chunks):
-        c_words = tokenize(c_text)
-        chunks_db.append({
-            "id": f"{doc_id}-{idx}",
-            "doc_id": doc_id,
-            "doc_title": title,
-            "chunk_index": idx,
-            "text": c_text,
-            "words": set(c_words),
-            "word_counts": Counter(c_words)
+def get_all_documents() -> List[Dict[str, Any]]:
+    """ดึงเอกสารทั้งหมดจาก SQLite Database"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM documents ORDER BY created_at DESC")
+    rows = cursor.fetchall()
+    conn.close()
+
+    docs = []
+    for r in rows:
+        tags = []
+        if r["tags"]:
+            try:
+                tags = json.loads(r["tags"])
+            except Exception:
+                tags = []
+        docs.append({
+            "id": r["id"],
+            "title": r["title"],
+            "content": r["content"],
+            "doc_type": r["doc_type"],
+            "tags": tags,
+            "chunk_count": r["chunk_count"],
+            "preview": r["preview"],
+            "created_at": r["created_at"]
         })
+    return docs
 
-    return doc_entry
+def get_chunks_count() -> int:
+    """นับจำนวน Chunks ทั้งหมดใน SQLite"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM rag_chunks")
+    count = cursor.fetchone()[0]
+    conn.close()
+    return count
 
 def delete_document(doc_id: str) -> bool:
-    """ลบเอกสารและ chunks ออกจาก Knowledge Base"""
-    global documents_db, chunks_db
-    if doc_id in documents_db:
-        del documents_db[doc_id]
-        chunks_db = [c for c in chunks_db if c["doc_id"] != doc_id]
-        return True
-    return False
+    """ลบเอกสารและ chunks ออกจาก SQLite Database"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM documents WHERE id = ?", (doc_id,))
+    cursor.execute("DELETE FROM rag_chunks WHERE doc_id = ?", (doc_id,))
+    changes = conn.total_changes
+    conn.commit()
+    conn.close()
+    return changes > 0
 
 def search_rag_context(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
     """
-    RAG Retrieval: ค้นหาท่อนเอกสารองค์กรที่เกี่ยวข้องกับคำถามมากที่สุด
-    ด้วยการคำนวณคะแนนความคล้ายคลึง (Keyword Overlap & Term Frequency)
+    RAG Retrieval: ค้นหาท่อนเอกสารจาก SQLite Database
+    ที่เกี่ยวข้องกับคำค้นหามากที่สุด
     """
-    if not chunks_db or not query.strip():
+    if not query.strip():
         return []
 
     q_words = tokenize(query)
     if not q_words:
         return []
 
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, doc_id, doc_title, chunk_index, chunk_text FROM rag_chunks")
+    rows = cursor.fetchall()
+    conn.close()
+
+    if not rows:
+        return []
+
     scored_chunks = []
-    for chunk in chunks_db:
-        # Match count and TF score
-        overlap = chunk["words"].intersection(q_words)
+    for row in rows:
+        c_text = row["chunk_text"]
+        c_words = tokenize(c_text)
+        chunk_words_set = set(c_words)
+        overlap = chunk_words_set.intersection(q_words)
         if not overlap:
             continue
 
-        score = sum(chunk["word_counts"][w] for w in overlap) / (math.sqrt(len(chunk["words"])) + 1.0)
-        # Bonus for exact substring match
+        c_counter = Counter(c_words)
+        score = sum(c_counter[w] for w in overlap) / (math.sqrt(len(chunk_words_set)) + 1.0)
+        
+        # Bonus for exact phrase
         for qw in q_words:
-            if len(qw) > 3 and qw in chunk["text"].lower():
+            if len(qw) > 3 and qw in c_text.lower():
                 score += 1.5
 
         scored_chunks.append({
-            "doc_id": chunk["doc_id"],
-            "doc_title": chunk["doc_title"],
-            "chunk_index": chunk["chunk_index"],
-            "chunk_text": chunk["text"],
+            "doc_id": row["doc_id"],
+            "doc_title": row["doc_title"],
+            "chunk_index": row["chunk_index"],
+            "chunk_text": c_text,
             "score": round(score, 3)
         })
 
@@ -207,8 +259,14 @@ def search_rag_context(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
     return scored_chunks[:top_k]
 
 def seed_initial_knowledge_base():
-    """เพิ่มเอกสารเริ่มต้นขององค์กร เพื่อให้ระบบ RAG พร้อมทำงานทันที"""
-    if not documents_db:
+    """เพิ่มเอกสารเริ่มต้นขององค์กรลง SQLite หากยังไม่มีเอกสารใดๆ"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM documents")
+    count = cursor.fetchone()[0]
+    conn.close()
+
+    if count == 0:
         ingest_document(
             title="E-Commerce & Payment Architecture Spec v2.4",
             content="""# Enterprise Payment & Order Processing Architecture Spec
@@ -218,7 +276,7 @@ def seed_initial_knowledge_base():
 - `AuthService.py`: JWT Token Based Authentication & RBAC (Roles: Admin, Manager, User)
 - `InventoryService.py`: ตรวจสอบและตัด Stock สินค้าแบบ Pessimistic Locking
 
-## Database Schema (PostgreSQL)
+## Database Schema (PostgreSQL / SQLite)
 - Table `orders`: id (UUID), user_id, total_amount, status, created_at, updated_at
 - Table `payments`: id, order_id, gateway, transaction_ref, amount, status, raw_response
 - Table `order_items`: id, order_id, product_id, quantity, unit_price
@@ -267,7 +325,7 @@ async def translate_with_gemini(
     """
     กระบวนการแปลภาษาหลัก:
     1. Masking PII / Secret Sanitization
-    2. RAG Context Retrieval จาก Corporate Knowledge Base
+    2. RAG Context Retrieval จาก SQLite Corporate Knowledge Base
     3. เรียก Gemini AI หรือ Local Engine พร้อมสร้าง Legacy Impact Analysis
     """
     # 1. PII Sanitization
@@ -367,9 +425,8 @@ def generate_local_fallback(text: str, mode: str, project_context: str = None, r
     """Local Fallback Engine พร้อม Impact Analysis จาก RAG Context"""
     ctx_desc = f" (ตามบริบทโปรเจกต์: {project_context})" if project_context and project_context.strip() else ""
     
-    # Extract affected modules / tables if RAG context exists
-    affected_modules = ["CoreService.py"]
-    affected_tables = ["users"]
+    affected_modules = ["PaymentService.py", "OrderService.py"]
+    affected_tables = ["orders", "payments"]
     
     if rag_sources:
         for src in rag_sources:
@@ -388,7 +445,7 @@ def generate_local_fallback(text: str, mode: str, project_context: str = None, r
         tech_stack = [
             {"name": "React + Vite", "desc": "สำหรับระบบ Front-end User Interface ที่รวดเร็ว"},
             {"name": "FastAPI + Python", "desc": "สำหรับ Back-end High Performance REST API"},
-            {"name": "PostgreSQL", "desc": "สำหรับระบบฐานข้อมูลที่มีความปลอดภัยสูงระดับ Enterprise"}
+            {"name": "SQLite / PostgreSQL", "desc": "สำหรับระบบฐานข้อมูลที่มีความปลอดภัยสูงและจัดเก็บข้อมูลถาวร"}
         ]
         if project_context and project_context.strip():
             tech_stack.insert(0, {"name": "Specified Context Stack", "desc": project_context.strip()})
@@ -444,6 +501,6 @@ def generate_local_fallback(text: str, mode: str, project_context: str = None, r
                 "title": "เปรียบเสมือน: การจัดระเบียบการจราจรบนทางด่วน",
                 "description": "เหมือนการเปิดช่องทางพิเศษเพิ่มและปรับปรุงป้ายบอกทาง เพื่อให้รถสัญจรได้คล่องตัวและไม่ติดขัดครับ"
             },
-            "impact": "ระบบอาจมีความล่าช้าในการแสดงผลบางหน้าเล็กน้อยระหว่างปรับปรุง แต่ข้อมูลทั้งหมดปลอดภัย 100% ครับ",
+            "impact": "ระบบอาจมีการตอบสนองช้าลงเล็กน้อยในบางช่วงเวลาสั้นๆ แต่ข้อมูลทั้งหมดปลอดภัย 100% ครับ",
             "estimatedTime": "ทีมงานคาดว่าจะดำเนินการตรวจสอบความเรียบร้อยทั้งหมดภายใน 1-2 ชั่วโมงนี้ครับ"
         }
