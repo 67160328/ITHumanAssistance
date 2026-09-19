@@ -8,14 +8,13 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div 
-        className="modal-content glass-panel" 
-        style={{ maxWidth: '460px', padding: '1.5rem', position: 'relative' }} 
+        className="auth-modal-dialog" 
         onClick={(e) => e.stopPropagation()}
       >
         <button
-          className="btn-icon"
-          style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 10 }}
+          className="auth-modal-close-btn"
           onClick={onClose}
+          title="ปิดหน้าต่าง"
         >
           <X size={18} />
         </button>
