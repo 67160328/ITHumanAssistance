@@ -130,7 +130,7 @@ export default function KnowledgeBaseModal({ isOpen, onClose, onDocumentsUpdated
     <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-content glass-panel"
-        style={{ maxWidth: '800px', width: '92%', maxHeight: '88vh', overflowY: 'auto' }}
+        style={{ maxWidth: '980px', width: '95%', maxHeight: '90vh', overflowY: 'auto', padding: '2rem' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -434,16 +434,39 @@ export default function KnowledgeBaseModal({ isOpen, onClose, onDocumentsUpdated
         {/* TAB 3: Test RAG Retrieval */}
         {activeTab === 'rag-test' && (
           <div>
-            <form onSubmit={handleRAGSearch} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-              <input
-                type="text"
-                className="settings-input"
-                placeholder="พิมพ์คำถามหรือฟีเจอร์เพื่อทดสอบค้นหา เช่น 'ตัดบัตรเครดิต', 'ระบบแจ้งเตือน LINE'..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <button type="submit" className="btn-primary" disabled={isSearching} style={{ flexShrink: 0 }}>
-                {isSearching ? <Loader2 className="spinner" size={16} /> : <Search size={16} />}
+            <form onSubmit={handleRAGSearch} style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', alignItems: 'stretch' }}>
+              <div style={{ flex: 1, position: 'relative' }}>
+                <input
+                  type="text"
+                  className="settings-input"
+                  style={{
+                    width: '100%',
+                    padding: '0.9rem 1.25rem',
+                    fontSize: '1rem',
+                    borderRadius: '12px'
+                  }}
+                  placeholder="พิมพ์คำถามหรือฟีเจอร์เพื่อทดสอบค้นหา เช่น 'ตัดบัตรเครดิต', 'ระบบแจ้งเตือน LINE', 'PromptPay'..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={isSearching}
+                style={{
+                  minWidth: '150px',
+                  padding: '0.9rem 1.5rem',
+                  fontSize: '0.95rem',
+                  borderRadius: '12px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  flexShrink: 0
+                }}
+              >
+                {isSearching ? <Loader2 className="spinner" size={18} /> : <Search size={18} />}
                 <span>ค้นหา RAG</span>
               </button>
             </form>

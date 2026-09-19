@@ -68,9 +68,9 @@ body {
 }
 
 .app-container {
-  max-width: 1280px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 2rem 1.5rem 4rem 1.5rem;
+  padding: 2rem 2rem 5rem 2rem;
 }
 
 /* Header Styles */
@@ -301,23 +301,25 @@ body {
 
 .custom-textarea {
   width: 100%;
-  height: 180px;
-  background: var(--bg-input);
-  border: 1px solid var(--border-color);
+  height: 200px;
+  background: rgba(15, 23, 42, 0.85) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 14px;
-  padding: 1rem 1.2rem;
-  color: var(--text-main);
-  font-family: var(--font-sans);
-  font-size: 1rem;
-  line-height: 1.6;
+  padding: 1.1rem 1.3rem;
+  color: #f8fafc !important;
+  font-family: var(--font-thai);
+  font-size: 1.05rem;
+  line-height: 1.65;
   resize: vertical;
   transition: all 0.25s ease;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .custom-textarea:focus {
   outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  border-color: #6366f1;
+  background: rgba(15, 23, 42, 0.95) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3), inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .textarea-footer {
@@ -601,21 +603,41 @@ body {
   color: var(--text-main);
 }
 
-.custom-input {
+.custom-input,
+.settings-input {
   width: 100%;
-  background: var(--bg-input);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  padding: 0.75rem 1rem;
-  color: var(--text-main);
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
+  background: rgba(15, 23, 42, 0.85) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 12px;
+  padding: 0.85rem 1.15rem;
+  color: #f8fafc !important;
+  font-family: var(--font-thai);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-.custom-input:focus {
+.custom-input:focus,
+.settings-input:focus {
   outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  border-color: #6366f1 !important;
+  background: rgba(15, 23, 42, 0.95) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3), inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.custom-input::placeholder,
+.settings-input::placeholder {
+  color: #64748b;
+}
+
+/* Chrome/Edge autofill protection for settings-input */
+.settings-input:-webkit-autofill,
+.settings-input:-webkit-autofill:hover,
+.settings-input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #0f172a inset !important;
+  -webkit-text-fill-color: #f8fafc !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 .modal-footer {
