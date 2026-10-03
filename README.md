@@ -171,9 +171,10 @@ flowchart LR
 * **Dual Deliverables:** ส่งทั้งข้อความสรุป Markdown และแนบไฟล์โครงสร้าง JSON/Markdown
 
 ### 5. Token Quota & Subscription Management
-* **Rate Limiting Guard:** จำกัดการใช้งานสำหรับผู้ใช้ฟรี (5 ครั้ง / 4 ชั่วโมง) ป้องกัน AI Cost Spikes
-* **Cooldown Alert Modal:** แจ้งเตือนเวลาที่ต้องรอแบบนับถอยหลัง (เช่น "ใช้ได้อีกทีใน 3 ชม. 45 นาที")
-* **Pro Tier Upgrade:** ปลดล็อกการใช้งานไม่จำกัด (Unlimited Usage) ผ่านแบบฟอร์ม PromptPay จำลอง
+* **Rate Limiting Guard & Cooldown:** มีกลไกหน้าต่างเวลาและ Cooldown Alert Modal คำนวณเวลานับถอยหลัง (เช่น "ใช้ได้อีกทีใน 3 ชม. 45 นาที") พร้อมปุ่ม Pro Tier Upgrade ผ่านแบบฟอร์ม PromptPay จำลอง
+* **🔍 ข้อสังเกตและสถานะการทำงานปัจจุบัน (Known Status & Limitations):**
+  * **การนับ Token รายครั้ง (Execution Counter):** ปัจจุบันการจำกัดยังเน้นตรวจจับรอบและคูลดาวน์เวลา แต่**ยังไม่ได้เปิดใช้นับจำนวนครั้งจำกัดจริงแบบเข้มงวด (Request Usage Count / Token Strict Limit)** ผู้ใช้จึงยังสามารถกดแปลต่อได้หากระบบยังไม่ได้ตัดรอบเด็ดขาด
+  * **Telegram Cooldown Notification (Roadmap & Feature Planned):** ในกรณีที่โควตาหรือ Token หมด หากผู้ใช้ได้เชื่อมต่อและบันทึก **Telegram Chat ID** ไว้ในระบบ จะมีฟังก์ชันตั้งเวลา (Scheduled Background Task) ส่งข้อความแจ้งเตือนอัตโนมัติเข้า Telegram ทันทีว่า **"🎉 เว็บไซต์พร้อมให้คุณใช้งานได้ตามรอบเวลาที่กำหนดแล้ว!"** เพื่อให้ผู้ใช้กลับเข้ามาใช้งานได้โดยไม่ต้องคอยเฝ้าหน้าเว็บ
 
 ### 6. 🧪 Database Indexing Lab & Performance Optimization Studio
 * **Core Production Indexes:** เพิ่ม B-Tree Index บนตาราง `history`, `rag_chunks`, `users`, `telegram_recipients` เพื่อให้ Query รวดเร็ว
