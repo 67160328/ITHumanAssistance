@@ -5,19 +5,23 @@
 
 ---
 
-## 📊 การประเมินผลการดำเนินงานของโปรเจกต์ (Self-Evaluation Progress)
+## 📊 การประเมินผลการดำเนินงานของโปรเจกต์ตามความจริง (Realistic Self-Evaluation Progress)
 
-| ระยะการพัฒนา (Roadmap Phases) | รายละเอียดขอบเขตงาน | สถานะ | สัดส่วนงาน (%) | ดำเนินการเสร็จสิ้น |
+| ระยะการพัฒนา (Roadmap Phases) | รายละเอียดขอบเขตงาน | สถานะตามจริง | สัดส่วนงาน (%) | ดำเนินการเสร็จจริง |
 | :--- | :--- | :---: | :---: | :---: |
 | **Phase 1: MVP & Context Ingestion** | Project Context Selector, Multi-format Export (OpenAPI, Jira, PDF, Email), Man-Days Estimator | **เสร็จสมบูรณ์** | 20% | 20% / 20% |
 | **Phase 2: Knowledge Base & Security** | SQLite Database, RAG Ingestion Engine, Impact Analysis, PII Sanitizer Guardrails, Full Auth System | **เสร็จสมบูรณ์** | 25% | 25% / 25% |
 | **Phase 3: Direct Toolchain & Bot Integration** | Telegram Bot One-click Delivery (Direct Channel/Group Forwarding, Saved Recipient DB) | **เสร็จสมบูรณ์** | 15% | 15% / 15% |
-| **Phase 4: Token Quota & Monetization** | Free Tier Rate Limiting (5 requests / 4h), Cooldown Timer, Subscription Pro Upgrade | **เสร็จสมบูรณ์** | 10% | 10% / 10% |
+| **Phase 4: Token Quota & Monetization** | โครงสร้าง Rate Limit, Cooldown Modal, Pro Upgrade UI (ยังค้างการนับรอบตัดสิทธิ์ใช้งานจริงอย่างเข้มงวด และระบบส่งแจ้งเตือน Telegram หลังคูลดาวน์) | 🟡 **กำลังปรับปรุง (60%)** | 10% | **6%** / 10% |
 | **Phase 5: High-Performance Database & Lab** | Core Production Indexes, Benchmark Sandbox (50k rows), Interactive Indexing Lab & Student Guide | **เสร็จสมบูรณ์** | 15% | 15% / 15% |
-| **Phase 6: Multi-AI Model Gateway & Router** | Multi-Provider Engine (Gemini, OpenAI, Anthropic, Ollama), Fallback Failover, Model Cost Router | **เสร็จสมบูรณ์** | 15% | 15% / 15% |
-| **รวมความคืบหน้าภาพรวมทั้งหมด** | **ประเมินผลงานจากขอบเขตระบบทั้งหมด 100%** | 🚀 **พร้อมใช้งานจริง** | **100%** | **100% / 100%** |
+| **Phase 6: Multi-AI Model Gateway & Router** | โครงสร้างสถาปัตยกรรม Decoupled AI และ Multi-candidate Fallback บน Gemini (ส่วน OpenAI, Claude, และ Ollama ยังอยู่ในขั้นตอนการเชื่อมต่อ Endpoint เพิ่มเติม) | 🟠 **วางโครงสร้างแล้ว (33%)** | 15% | **5%** / 15% |
+| **รวมความคืบหน้าภาพรวมทั้งหมด** | **ประเมินผลงานจากสถานะการพัฒนาจริง 100%** | ⏳ **พัฒนาไปแล้ว** | **100%** | **81% / 100%** |
 
-> 🎯 **สรุปภาพรวมระบบ:** ดำเนินการพัฒนาแล้วเสร็จสมบูรณ์ **100%** ครอบคลุมระบบแปลงภาษาไอที, คลังความรู้ RAG, ระบบความปลอดภัย PII, การส่งต่อผลลัพธ์ผ่าน Telegram Bot ทันที, ระบบจำกัดโควตาและสมัครสมาชิก Pro, ห้องทดลองวัดประสิทธิภาพ Database Indexing (Student Lab), ตลอดจน **สถาปัตยกรรม Multi-AI Provider Gateway** ที่รองรับ AI หลายค่ายพร้อมระบบ Failover อัตโนมัติ
+> 🎯 **สรุปสถานะตามความเป็นจริง (81% Completed):**
+> * **ส่วนที่เสร็จสมบูรณ์ 100% (75% ของงาน):** Core Translation, Impact Analysis, RAG Knowledge Base, PII Sanitizer, Full Auth, Telegram Bot Integration และ Database Indexing Lab Studio
+> * **ส่วนที่อยู่ระหว่างดำเนินการและปรับปรุง (25% ของงาน):**
+>   1. **Token Quota Enforcement:** ปัจจุบันมี UI นับเวลาและระบบบันทึก แต่**ยังไม่ได้เปิดใช้นับจำนวนครั้งจำกัดจริงแบบเข้มงวด** และ**รอเชื่อมต่อระบบ Background Task ยิงแจ้งเตือนผ่าน Telegram** เมื่อถึงเวลาคูลดาวน์
+>   2. **Multi-AI Provider Implementation:** ปัจจุบันเชื่อมต่อและมี Fallback Pool บนตระกูล **Google Gemini** แล้ว ส่วนการเชื่อมต่อ OpenAI API, Anthropic Claude และ Local LLM อยู่ในระดับโครงสร้างสถาปัตยกรรม (Architecture Ready) ที่ต้องเพิ่ม API Keys และ Client Driver จริงในขั้นตอนถัดไป
 
 ---
 
