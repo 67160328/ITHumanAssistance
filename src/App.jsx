@@ -10,6 +10,11 @@ import ChangePasswordModal from './components/ChangePasswordModal';
 import UserMenu from './components/UserMenu';
 import KnowledgeBaseModal from './components/KnowledgeBaseModal';
 import ImpactAnalysisCard from './components/ImpactAnalysisCard';
+import TelegramModal from './components/TelegramModal';
+import SubscriptionModal from './components/SubscriptionModal';
+import IndexingLabModal from './components/IndexingLabModal';
+import QuotaBadge from './components/QuotaBadge';
+import { getQuotaStatus, consumeLocalQuota } from './services/quotaService';
 import { downloadMarkdownFile, exportToPDF, generateJiraFormat, downloadOpenAPIJson, generateClientEmailDraft } from './utils/exportUtils';
 import {
   Sparkles,
@@ -38,7 +43,8 @@ import {
   Database,
   User,
   Lock,
-  Radio
+  Radio,
+  Send
 } from 'lucide-react';
 
 export default function App() {
@@ -64,23 +70,52 @@ export default function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isKnowledgeBaseOpen, setIsKnowledgeBaseOpen] = useState(false);
+  const [isTelegramModalOpen, setIsTelegramModalOpen] = useState(false);
+  const [isSubscriptionOpen, setIsSubscriptionOpen] = useState(false);
+  const [isIndexingLabOpen, setIsIndexingLabOpen] = useState(false);
+  const [quotaStatus, setQuotaStatus] = useState(null);
+  const [lockoutWaitTime, setLockoutWaitTime] = useState(null);
   
   // Auth & Knowledge state
   const [currentUser, setCurrentUser] = useState(getUser());
   const [docCount, setDocCount] = useState(2);
   const [currentApiKey, setCurrentApiKey] = useState(getStoredApiKey());
 
+  const refreshQuota = async (user = currentUser) => {
+    try {
+      const q = await getQuotaStatus(user);
+      setQuotaStatus(q);
+      if (!q.allowed) {
+        setLockoutWaitTime(q.formatted_wait_time || 'สักครู่');
+      } else {
+        setLockoutWaitTime(null);
+      }
+    } catch (e) {}
+  };
+
   useEffect(() => {
-    // Initial fetch of doc count
+    // Initial fetch of doc count and quota
     getDocuments().then(docs => {
       if (docs && docs.length) setDocCount(docs.length);
     }).catch(() => {});
-  }, []);
+
+    refreshQuota();
+  }, [currentUser]);
 
   const currentPresets = mode === 'human-to-tech' ? PRESETS.humanToTech : PRESETS.techToHuman;
 
   const handleTranslate = async () => {
     if (!inputText.trim()) return;
+
+    // Check quota before initiating translation
+    const currentQ = await getQuotaStatus(currentUser);
+    if (!currentQ.allowed) {
+      setLockoutWaitTime(currentQ.formatted_wait_time || 'สักครู่');
+      setIsSubscriptionOpen(true);
+      showToast(`โควต้าฟรีหมดแล้ว (ใช้งานได้อีกทีในอีก ${currentQ.formatted_wait_time}) กรุณาอัปเกรดเป็น Pro เพื่อใช้งานต่อ`);
+      return;
+    }
+
     setIsLoading(true);
     try {
       const result = await translateText(
@@ -92,11 +127,20 @@ export default function App() {
         timelineConstraint,
         useRag,
         sanitizePii,
-        securityMode
+        securityMode,
+        currentUser
       );
       setTranslationResult(result);
+      consumeLocalQuota();
+      refreshQuota();
     } catch (err) {
-      showToast('การแปลภาษาล้มเหลว: ' + err.message);
+      if (err.isQuotaExceeded) {
+        setLockoutWaitTime(err.quotaDetails?.formatted_wait_time || 'สักครู่');
+        setIsSubscriptionOpen(true);
+        showToast(err.message);
+      } else {
+        showToast('การแปลภาษาล้มเหลว: ' + err.message);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -104,6 +148,15 @@ export default function App() {
 
   const handleSelectPreset = async (preset) => {
     setInputText(preset.input);
+
+    const currentQ = await getQuotaStatus(currentUser);
+    if (!currentQ.allowed) {
+      setLockoutWaitTime(currentQ.formatted_wait_time || 'สักครู่');
+      setIsSubscriptionOpen(true);
+      showToast(`โควต้าฟรีหมดแล้ว (ใช้งานได้อีกทีในอีก ${currentQ.formatted_wait_time}) กรุณาอัปเกรดเป็น Pro`);
+      return;
+    }
+
     setIsLoading(true);
     try {
       const result = await translateText(
@@ -115,11 +168,20 @@ export default function App() {
         timelineConstraint,
         useRag,
         sanitizePii,
-        securityMode
+        securityMode,
+        currentUser
       );
       setTranslationResult(result);
+      consumeLocalQuota();
+      refreshQuota();
     } catch (err) {
-      showToast('การแปลภาษาล้มเหลว: ' + err.message);
+      if (err.isQuotaExceeded) {
+        setLockoutWaitTime(err.quotaDetails?.formatted_wait_time || 'สักครู่');
+        setIsSubscriptionOpen(true);
+        showToast(err.message);
+      } else {
+        showToast('การแปลภาษาล้มเหลว: ' + err.message);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -250,6 +312,32 @@ export default function App() {
         onDocumentsUpdated={(count) => setDocCount(count)}
       />
 
+      {/* Telegram Send Modal */}
+      <TelegramModal
+        isOpen={isTelegramModalOpen}
+        onClose={() => setIsTelegramModalOpen(false)}
+        translationResult={translationResult}
+        onSentSuccess={(msg) => showToast(msg || 'ส่งเข้า Telegram สำเร็จแล้ว!')}
+      />
+
+      {/* Subscription & Quota Upgrade Modal */}
+      <SubscriptionModal
+        isOpen={isSubscriptionOpen}
+        onClose={() => setIsSubscriptionOpen(false)}
+        currentUser={currentUser}
+        remainingTimeText={lockoutWaitTime}
+        onUpgradeSuccess={(res) => {
+          showToast(res.message || 'ยินดีต้อนรับสู่สมาชิก Pro Plan!');
+          refreshQuota();
+        }}
+      />
+
+      {/* Database Indexing Lab Modal */}
+      <IndexingLabModal
+        isOpen={isIndexingLabOpen}
+        onClose={() => setIsIndexingLabOpen(false)}
+      />
+
       {/* Header */}
       <header className="app-header">
         <div style={{ display: 'flex', justifyContent: 'center', gap: '0.6rem', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap' }}>
@@ -257,6 +345,32 @@ export default function App() {
             <Sparkles size={16} />
             <span>ระบบแปลภาษาไอทีอัจฉริยะ (Enterprise Edition)</span>
           </div>
+
+          {/* Quota Badge & Upgrade Button */}
+          <QuotaBadge
+            quotaStatus={quotaStatus}
+            onOpenSubscription={() => setIsSubscriptionOpen(true)}
+          />
+
+          {/* Database Indexing Lab Button */}
+          <button
+            className="settings-badge-btn"
+            style={{ borderColor: 'rgba(16, 185, 129, 0.4)', background: 'rgba(16, 185, 129, 0.15)', color: '#6ee7b7' }}
+            onClick={() => setIsIndexingLabOpen(true)}
+          >
+            <Zap size={14} color="#34d399" />
+            <span>🧪 Database Indexing Lab</span>
+            <span style={{
+              fontSize: '0.7rem',
+              backgroundColor: '#059669',
+              color: '#fff',
+              padding: '1px 6px',
+              borderRadius: '9999px',
+              fontWeight: 600
+            }}>
+              50k Rows
+            </span>
+          </button>
 
           {/* Knowledge Base RAG Button */}
           <button
@@ -565,6 +679,49 @@ export default function App() {
             </div>
           </div>
 
+          {/* Quota Lockout Notice if exhausted */}
+          {quotaStatus && !quotaStatus.allowed && (
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(15, 23, 42, 0.8) 100%)',
+              border: '1px solid rgba(239, 68, 68, 0.35)',
+              borderRadius: '10px',
+              padding: '0.85rem 1rem',
+              marginBottom: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '0.6rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <Clock size={18} color="#ef4444" />
+                <div style={{ fontSize: '0.84rem', color: '#fecaca' }}>
+                  <strong>โควต้าฟรีของคุณหมดแล้ว:</strong> ใช้งานได้อีกทีในอีก <strong>{quotaStatus.formatted_wait_time || 'สักครู่'}</strong>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSubscriptionOpen(true)}
+                style={{
+                  background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                  border: 'none',
+                  color: '#fff',
+                  borderRadius: '6px',
+                  padding: '4px 10px',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <Sparkles size={13} />
+                <span>สมัคร Pro ใช้ต่อทันที</span>
+              </button>
+            </div>
+          )}
+
           {/* Action Bar */}
           <div className="action-bar">
             <button className="btn-primary" onClick={handleTranslate} disabled={isLoading}>
@@ -573,6 +730,7 @@ export default function App() {
             </button>
           </div>
         </div>
+
 
         {/* Right Column: Output Result Panel */}
         <div className="glass-panel">
@@ -601,6 +759,22 @@ export default function App() {
                     <span>Email Draft</span>
                   </button>
                 )}
+                <button
+                  className="btn-secondary"
+                  onClick={() => setIsTelegramModalOpen(true)}
+                  title="ส่งโครงสร้างข้อมูลเข้า Telegram"
+                  style={{
+                    background: 'rgba(14, 165, 233, 0.18)',
+                    borderColor: 'rgba(14, 165, 233, 0.45)',
+                    color: '#38BDF8',
+                    padding: '0.35rem 0.65rem',
+                    fontSize: '0.8rem',
+                    fontWeight: 500
+                  }}
+                >
+                  <Send size={14} />
+                  <span>Telegram</span>
+                </button>
                 <button className="btn-secondary" onClick={handleExportMarkdown} title="Export to Markdown (.md)" style={{ padding: '0.35rem 0.6rem', fontSize: '0.8rem' }}>
                   <FileText size={14} className="text-indigo-400" />
                   <span>Markdown</span>

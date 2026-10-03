@@ -34,7 +34,8 @@ export async function translateText(
   timelineConstraint = null,
   useRag = true,
   sanitizePii = true,
-  securityMode = 'cloud'
+  securityMode = 'cloud',
+  username = null
 ) {
   if (!input || !input.trim()) return null;
 
@@ -59,9 +60,18 @@ export async function translateText(
           timeline_constraint: timelineConstraint,
           use_rag: useRag,
           sanitize_pii: sanitizePii,
-          security_mode: securityMode
+          security_mode: securityMode,
+          username: username
         })
       });
+
+      if (response.status === 429) {
+        const errJson = await response.json();
+        const err = new Error(errJson.detail?.message || 'คุณใช้โควต้าฟรีครบกำหนดแล้ว');
+        err.isQuotaExceeded = true;
+        err.quotaDetails = errJson.detail;
+        throw err;
+      }
 
       if (response.ok) {
         const result = await response.json();
@@ -72,10 +82,14 @@ export async function translateText(
           maskedItems: result.masked_items || [],
           ragSources: result.rag_sources || [],
           isAi: result.is_ai,
-          data: result.data
+          data: result.data,
+          quotaInfo: result.quota_info
         };
       }
     } catch (err) {
+      if (err.isQuotaExceeded) {
+        throw err;
+      }
       console.info('FastAPI backend connection warning, using client engine:', err.message);
     }
   }

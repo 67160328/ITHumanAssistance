@@ -12,6 +12,7 @@ class TranslateRequest(BaseModel):
     use_rag: Optional[bool] = Field(True, description="เปิดใช้งาน RAG Retrieval จาก Corporate Knowledge Base หรือไม่")
     sanitize_pii: Optional[bool] = Field(True, description="สแกนและ Mask ข้อมูลสำคัญ (PII, Secret, API Keys) หรือไม่")
     security_mode: Optional[str] = Field("cloud", description="โหมดความปลอดภัย: 'cloud' หรือ 'private-local'")
+    username: Optional[str] = Field(None, description="ชื่อผู้ใช้ที่กำลังส่งคำขอแปล")
 
 
 class TechStackItem(BaseModel):
@@ -62,6 +63,8 @@ class TranslateResponse(BaseModel):
     rag_sources: Optional[List[Dict[str, Any]]] = []
     is_ai: bool
     data: Dict[str, Any]
+    quota_info: Optional[Dict[str, Any]] = None
+
 
 class HistoryItem(BaseModel):
     id: int
@@ -133,3 +136,71 @@ class AuthResponse(BaseModel):
     message: str
     username: Optional[str] = None
     token: Optional[str] = None
+
+# Telegram Integration Models
+class TelegramSendRequest(BaseModel):
+    token: Optional[str] = Field(None, description="Telegram Bot Token (ถ้าไม่ใส่จะใช้ค่า default ใน env)")
+    chat_id: str = Field(..., min_length=1, description="Telegram Chat ID หรือ @channel_name")
+    mode: str = Field(..., description="human-to-tech หรือ tech-to-human")
+    data: Dict[str, Any] = Field(..., description="โครงสร้างข้อมูล AI Translation Output")
+    include_json_file: Optional[bool] = Field(False, description="แนบไฟล์ JSON โครงสร้างเต็มไปด้วยหรือไม่")
+    include_markdown_file: Optional[bool] = Field(False, description="แนบไฟล์ Markdown (.md) ไปด้วยหรือไม่")
+
+class TelegramTestRequest(BaseModel):
+    token: Optional[str] = Field(None, description="Telegram Bot Token")
+    chat_id: str = Field(..., min_length=1, description="Telegram Chat ID")
+
+class TelegramResponse(BaseModel):
+    success: bool
+    message: str
+    telegram_message_id: Optional[int] = None
+    has_file: Optional[bool] = False
+
+# Quota & Subscription Models
+class QuotaStatusResponse(BaseModel):
+    allowed: bool
+    tier: str
+    quota_used: int
+    quota_limit: int  # -1 for unlimited
+    quota_reset_at: Optional[str] = None
+    remaining_seconds: int = 0
+    formatted_wait_time: Optional[str] = None
+
+class UpgradeTierRequest(BaseModel):
+    username: str
+    target_tier: str = "pro"
+    payment_method: Optional[str] = "promptpay"
+
+class UpgradeTierResponse(BaseModel):
+    success: bool
+    message: str
+    tier: str
+    username: str
+
+# Database Indexing Lab Models
+class BenchmarkStatusResponse(BaseModel):
+    table_name: str
+    row_count: int
+    active_indexes: List[str]
+    available_indexes: List[str]
+    has_indexes: bool
+    approx_db_size_mb: float
+
+class BenchmarkSeedRequest(BaseModel):
+    count: int = Field(50000, ge=1000, le=200000, description="จำนวนแถวที่ต้องการปั๊ม (1,000 - 200,000)")
+
+class BenchmarkToggleIndexRequest(BaseModel):
+    enable: bool = Field(..., description="True = สร้าง Index, False = ลบ Index เพื่อเปรียบเทียบ")
+
+class BenchmarkExecuteRequest(BaseModel):
+    query: str = Field(..., min_length=5, description="คำสั่ง SQL SELECT ที่ต้องการทดสอบ")
+
+class BenchmarkExecuteResponse(BaseModel):
+    sql: str
+    elapsed_ms: float
+    row_count: int
+    sample_rows: List[Dict[str, Any]]
+    uses_index: bool
+    is_table_scan: bool
+    plan_steps: List[Dict[str, Any]]
+    plan_summary: str

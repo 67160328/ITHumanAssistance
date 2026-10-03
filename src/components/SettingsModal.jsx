@@ -1,15 +1,35 @@
-import React, { useState } from 'react';
-import { X, Key, Check, Bot, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Key, Check, Bot, AlertCircle, Send, ExternalLink } from 'lucide-react';
 import { getStoredApiKey, saveApiKey } from '../services/translator';
+import { getStoredTelegramConfig, saveTelegramConfig, fetchTelegramBackendConfig, SYSTEM_DEFAULT_TOKEN } from '../services/telegramService';
 
 export default function SettingsModal({ isOpen, onClose, onSave }) {
   const [apiKey, setApiKey] = useState(getStoredApiKey());
+  const initialTele = getStoredTelegramConfig();
+  const [telegramToken, setTelegramToken] = useState(initialTele.token || SYSTEM_DEFAULT_TOKEN);
+  const [telegramChatId, setTelegramChatId] = useState(initialTele.chatId);
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchTelegramBackendConfig().then((cfg) => {
+        if (cfg) {
+          if (cfg.default_token && (!telegramToken || telegramToken === '')) {
+            setTelegramToken(cfg.default_token);
+          }
+          if (cfg.latest_chat_id && !telegramChatId) {
+            setTelegramChatId(cfg.latest_chat_id);
+          }
+        }
+      }).catch(() => {});
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleSave = () => {
     saveApiKey(apiKey.trim());
+    saveTelegramConfig(telegramToken, telegramChatId);
     setSavedSuccess(true);
     if (onSave) onSave(apiKey.trim());
     setTimeout(() => {
@@ -24,7 +44,7 @@ export default function SettingsModal({ isOpen, onClose, onSave }) {
         <div className="modal-header">
           <div className="modal-title">
             <Key size={20} className="text-indigo-400" />
-            <span>ตั้งค่า Google AI Studio / Gemini API Key</span>
+            <span>ตั้งค่าระบบ & การเชื่อมต่อภายนอก</span>
           </div>
           <button className="btn-icon" onClick={onClose}>
             <X size={18} />
@@ -32,14 +52,15 @@ export default function SettingsModal({ isOpen, onClose, onSave }) {
         </div>
 
         <div className="modal-body">
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>
-            ป้อน API Key ของคุณจาก <strong>Google AI Studio</strong> เพื่อเปิดใช้งานการแปลภาษาไอทีด้วยโมเดล <strong>Gemini 1.5 Flash</strong> แบบเรียลไทม์
-          </p>
-
-          <div style={{ marginBottom: '1.2rem' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', color: '#A5B4FC', fontWeight: '500', marginBottom: '0.4rem' }}>
-              Gemini API Key:
-            </label>
+          {/* Section 1: Gemini AI Key */}
+          <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '1.2rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', color: '#A5B4FC', fontWeight: 600, fontSize: '0.95rem' }}>
+              <Key size={16} />
+              <span>Google Gemini AI API Key</span>
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.8rem' }}>
+              ป้อน API Key จาก <strong>Google AI Studio</strong> เพื่อเปิดใช้งานการแปลภาษาไอทีแบบเรียลไทม์
+            </p>
             <input
               type="password"
               className="custom-input"
@@ -49,9 +70,52 @@ export default function SettingsModal({ isOpen, onClose, onSave }) {
             />
           </div>
 
-          <div style={{ background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.2)', padding: '0.8rem 1rem', borderRadius: '10px', fontSize: '0.85rem', color: '#C7D2FE', display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-            <Bot size={18} style={{ flexShrink: 0 }} />
-            <span>ระบบจะเชื่อมต่อกับ Google Generative AI API โดยตรง ไม่มีการเก็บคีย์ของคุณบนเซิร์ฟเวอร์ภายนอก</span>
+          {/* Section 2: Telegram Bot Integration */}
+          <div style={{ marginBottom: '1.2rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#38bdf8', fontWeight: 600, fontSize: '0.95rem' }}>
+                <Send size={16} />
+                <span>Telegram Bot Integration</span>
+              </div>
+              <a
+                href="https://t.me/BotFather"
+                target="_blank"
+                rel="noreferrer"
+                style={{ fontSize: '0.75rem', color: '#38bdf8', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '3px' }}
+              >
+                <span>@BotFather</span>
+                <ExternalLink size={11} />
+              </a>
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.8rem' }}>
+              ตั้งค่าเริ่มต้นสำหรับส่งโครงสร้างข้อมูล AI ไปยังกลุ่มหรือแชต Telegram
+            </p>
+
+            <div style={{ marginBottom: '0.8rem' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.3rem' }}>
+                Telegram Bot Token:
+              </label>
+              <input
+                type="password"
+                className="custom-input"
+                placeholder="123456789:ABCdefGh..."
+                value={telegramToken}
+                onChange={(e) => setTelegramToken(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.3rem' }}>
+                Default Chat ID / Channel:
+              </label>
+              <input
+                type="text"
+                className="custom-input"
+                placeholder="เช่น 123456789 หรือ @channel_name"
+                value={telegramChatId}
+                onChange={(e) => setTelegramChatId(e.target.value)}
+              />
+            </div>
           </div>
         </div>
 
@@ -59,10 +123,11 @@ export default function SettingsModal({ isOpen, onClose, onSave }) {
           <button className="btn-secondary" onClick={onClose}>ยกเลิก</button>
           <button className="btn-primary" onClick={handleSave}>
             {savedSuccess ? <Check size={16} /> : <Key size={16} />}
-            <span>{savedSuccess ? 'บันทึกเรียบร้อย' : 'บันทึก API Key'}</span>
+            <span>{savedSuccess ? 'บันทึกเรียบร้อย' : 'บันทึกการตั้งค่าทั้งหมด'}</span>
           </button>
         </div>
       </div>
     </div>
   );
 }
+

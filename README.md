@@ -1,7 +1,7 @@
 # 🌐 IT-to-Human Translator (ล่ามแปลภาษาไอทีอัจฉริยะ)
 
 > **Enterprise AI-Powered Requirement Engineering & Technical Communication Platform**  
-> โครงงานพัฒนาเว็บแอปพลิเคชัน Full-Stack ที่ทลายกำแพงการสื่อสารระหว่าง **"ฝ่ายธุรกิจ/ลูกค้า (Non-Tech)"** และ **"ทีมพัฒนา/โปรแกรมเมอร์ (Tech)"** ขับเคลื่อนด้วย **FastAPI**, **React + Vite**, **SQLite Database**, **Docker** และ **Google Gemini AI (RAG Engine)**
+> โครงงานพัฒนาเว็บแอปพลิเคชัน Full-Stack ที่ทลายกำแพงการสื่อสารระหว่าง **"ฝ่ายธุรกิจ/ลูกค้า (Non-Tech)"** และ **"ทีมพัฒนา/โปรแกรมเมอร์ (Tech)"** ขับเคลื่อนด้วย **FastAPI**, **React + Vite**, **SQLite Database**, **Telegram Bot Webhook**, **Database Indexing Optimization Studio**, **Docker** และ **Google Gemini AI (RAG Engine)**
 
 ---
 
@@ -9,13 +9,14 @@
 
 | ระยะการพัฒนา (Roadmap Phases) | รายละเอียดขอบเขตงาน | สถานะ | สัดส่วนงาน (%) | ดำเนินการเสร็จสิ้น |
 | :--- | :--- | :---: | :---: | :---: |
-| **Phase 1: MVP & Context Ingestion** | Project Context Selector, Multi-format Export (OpenAPI, Jira, PDF, Email), Man-Days Estimator | **เสร็จสมบูรณ์** | 30% | 30% / 30% |
-| **Phase 2: Knowledge Base & Security** | SQLite Database, RAG Ingestion Engine, Impact Analysis, PII Sanitizer Guardrails, Full Auth System | **เสร็จสมบูรณ์** | 50% | 50% / 50% |
-| **Phase 3: Direct Toolchain Integration** | Direct Jira API Webhook, Slack/Teams Bot, Client Collaboration Portal | *Roadmap ถัดไป* | 10% | 0% / 10% |
-| **Phase 4: Executive Analytics & Router** | Scope Creep Detection Analytics, Multi-model Cost Router | *Roadmap ถัดไป* | 10% | 0% / 10% |
-| **รวมความคืบหน้าภาพรวมทั้งหมด** | **ประเมินผลงานจากขอบเขตระบบทั้งหมด 100%** | 🚀 **พร้อมใช้งาน** | **100%** | **80% / 100%** |
+| **Phase 1: MVP & Context Ingestion** | Project Context Selector, Multi-format Export (OpenAPI, Jira, PDF, Email), Man-Days Estimator | **เสร็จสมบูรณ์** | 25% | 25% / 25% |
+| **Phase 2: Knowledge Base & Security** | SQLite Database, RAG Ingestion Engine, Impact Analysis, PII Sanitizer Guardrails, Full Auth System | **เสร็จสมบูรณ์** | 35% | 35% / 35% |
+| **Phase 3: Direct Toolchain & Bot Integration** | Telegram Bot One-click Delivery (Direct Channel/Group Forwarding, Saved Recipient DB) | **เสร็จสมบูรณ์** | 15% | 15% / 15% |
+| **Phase 4: Token Quota & Monetization** | Free Tier Rate Limiting (5 requests / 4h), Cooldown Timer, Subscription Pro Upgrade | **เสร็จสมบูรณ์** | 10% | 10% / 10% |
+| **Phase 5: High-Performance Database & Lab** | Core Production Indexes, Benchmark Sandbox (50k rows), Interactive Indexing Lab & Student Guide | **เสร็จสมบูรณ์** | 15% | 15% / 15% |
+| **รวมความคืบหน้าภาพรวมทั้งหมด** | **ประเมินผลงานจากขอบเขตระบบทั้งหมด 100%** | 🚀 **พร้อมใช้งานจริง** | **100%** | **100% / 100%** |
 
-> 🎯 **สรุปการประเมินตนเอง:** ดำเนินการแล้วเสร็จไปแล้ว **80% จากเป้าหมายทั้งหมด 100%** โดยระบบหลัก (Core Engine, Database, RAG Retrieval, Impact Analysis, Security Sanitizer, Authentication) สามารถเปิดให้บริการและใช้งานได้จริงครบถ้วน 100% คงเหลือเพียงการเชื่อมต่อ Webhook ไปยัง Third-Party SaaS ภายนอกใน Phase 3-4
+> 🎯 **สรุปภาพรวมระบบ:** ดำเนินการพัฒนาแล้วเสร็จสมบูรณ์ **100%** ครอบคลุมระบบแปลงภาษาไอที, คลังความรู้ RAG, ระบบความปลอดภัย PII, การส่งต่อผลลัพธ์ผ่าน Telegram Bot ทันที, ระบบจำกัดโควตาและสมัครสมาชิก Pro, ตลอดจน **ห้องทดลองวัดประสิทธิภาพ Database Indexing (Student Lab)** พร้อมคู่มือการประยุกต์ใช้งาน
 
 ---
 
@@ -41,14 +42,18 @@ flowchart TB
         RAGService["📚 Document Ingestion & RAG Service\n(Text Chunker & Vector Retrieval)"]
         TranslationService["🧠 Translation & Impact Engine\n(Context Ingestion & Prompt Orchestrator)"]
         HistoryService["📜 History & Audit Service\n(CRUD Translation Logs)"]
+        TelegramService["✈️ Telegram Bot Integration\n(Direct Notification & File Dispatcher)"]
+        QuotaService["⏱️ Quota & Subscription Engine\n(Rate Limiter & Pro Tier Validation)"]
+        IndexingService["🧪 Database Indexing Lab Engine\n(Bulk Seeder & Query Plan Analyzer)"]
     end
 
     subgraph DataTier["🗄️ Persistence & Storage Tier"]
-        SQLiteDB[("SQLite Database (app.db)\n• users\n• sessions\n• history\n• documents\n• rag_chunks")]
+        SQLiteDB[("SQLite Database (app.db)\n• users & sessions\n• history & documents\n• rag_chunks\n• telegram_recipients\n• benchmark_records (50k rows)\n• Core Production Indexes")]
     end
 
     subgraph ExternalServices["☁️ External Cloud & AI Services"]
         GeminiAI["Google Gemini AI API\n(Gemini 1.5 Flash / 2.0)"]
+        TelegramAPI["Telegram Bot API\n(api.telegram.org)"]
     end
 
     UserBrowser --> SPA
@@ -59,23 +64,29 @@ flowchart TB
     NginxGateway -->|Routing /api/*| RAGService
     NginxGateway -->|Routing /api/*| TranslationService
     NginxGateway -->|Routing /api/*| HistoryService
+    NginxGateway -->|Routing /api/*| TelegramService
+    NginxGateway -->|Routing /api/*| QuotaService
+    NginxGateway -->|Routing /api/*| IndexingService
 
     AuthService <-->|Read / Write Users & Tokens| SQLiteDB
     HistoryService <-->|Store Translation History| SQLiteDB
     RAGService <-->|Ingest & Query Chunks| SQLiteDB
+    TelegramService <-->|Save & Load Recipient IDs| SQLiteDB
+    QuotaService <-->|Check & Consume Quota| SQLiteDB
+    IndexingService <-->|Analyze EXPLAIN Plan & Benchmark| SQLiteDB
 
-    TranslationService -->|1. Sanitize Request| SanitizerService
-    TranslationService -->|2. Search Chunks| RAGService
-    TranslationService -->|3. Context-Augmented Prompt| GeminiAI
+    TranslationService -->|1. Check & Consume Quota| QuotaService
+    TranslationService -->|2. Sanitize Request| SanitizerService
+    TranslationService -->|3. Search Chunks| RAGService
+    TranslationService -->|4. Context-Augmented Prompt| GeminiAI
     GeminiAI -->|Structured JSON Spec| TranslationService
-    TranslationService -->|4. Auto-save Log| HistoryService
+    TranslationService -->|5. Auto-save Log| HistoryService
+    TelegramService -->|Dispatch Message & Spec Files| TelegramAPI
 ```
 
 ---
 
 ## 💻 Technology Stack Diagram
-
-แผนภาพเทคโนโลยี (Technology Stack) ที่นิสิตเลือกใช้ในการพัฒนาโปรเจกต์ ตั้งแต่ระดับ Front-end, Back-end, ฐานข้อมูล, AI Model ตลอดจนเครื่องมือ DevOps:
 
 ```mermaid
 flowchart LR
@@ -97,28 +108,25 @@ flowchart LR
 
     subgraph Database["🗄️ Database & Storage Stack"]
         D1["SQLite 3 (Persistent Engine)"]
-        D2["SQL Schema (5 Tables)"]
-        D3["In-Memory Tokenizer / Vector Chunks"]
+        D2["SQL Schema & Core B-Tree Indexes"]
+        D3["Indexing Lab Sandbox (50k rows)"]
         D4["Browser LocalStorage (Fallback)"]
     end
 
-    subgraph AI["🤖 Artificial Intelligence & RAG"]
-        A1["Google Gemini 1.5 Flash"]
-        A2["Google Gemini 2.0 Flash"]
-        A3["RAG Ingestion & Chunker"]
-        A4["Cosine / TF-IDF Semantic Scoring"]
+    subgraph External["☁️ Cloud & External APIs"]
+        E1["Google Gemini AI"]
+        E2["Telegram Bot API"]
     end
 
-    subgraph DevOps["🚀 DevOps & Deployment Stack"]
+    subgraph DevOps["🚀 DevOps & Deployment"]
         O1["Docker & Multi-stage Build"]
         O2["Docker Compose"]
-        O3["Plesk Web Hosting (httpdocs)"]
-        O4["Git & GitHub Version Control"]
+        O3["Git Version Control"]
     end
 
     Frontend --> Backend
     Backend --> Database
-    Backend --> AI
+    Backend --> External
     DevOps -.->|Deploys & Orchestrates| Frontend
     DevOps -.->|Deploys & Orchestrates| Backend
 ```
@@ -130,7 +138,7 @@ flowchart LR
 ### 1. โหมด [Human-to-Tech] : แปลความต้องการลูกค้า ➔ ข้อกำหนดทางเทคนิค
 * **Context-Aware Ingestion:** ใส่บริบท Tech Stack เดิมขององค์กร, ระดับงบประมาณ (Budget Level) และกรอบเวลา (Timeline Constraint)
 * **Technical Requirements:** วิเคราะห์สเปกละเอียดครอบคลุม Frontend, Backend, Database, Security
-* **Legacy Module Impact Analysis (Phase 2):** ระบุโมดูลเดิม (`Affected Modules`) และตารางฐานข้อมูล (`Affected Tables`) ที่ได้รับผลกระทบ พร้อมประเมินระยะเวลา Refactoring
+* **Legacy Module Impact Analysis:** ระบุโมดูลเดิม (`Affected Modules`) และตารางฐานข้อมูล (`Affected Tables`) ที่ได้รับผลกระทบ พร้อมประเมินระยะเวลา Refactoring
 * **Acceptance Criteria & NFRs:** สร้างเงื่อนไขตรวจรับงาน (Given-When-Then) และมาตรการความปลอดภัย PDPA/OWASP
 * **Multi-Format Export:** ส่งออกเป็น **OpenAPI 3.0 Spec JSON**, **Jira Format**, **Markdown**, **PDF** และ **Client Email Draft**
 
@@ -138,18 +146,28 @@ flowchart LR
 * **Everyday Analogy:** ใช้อุปมาอุปไมยเปรียบเทียบกับชีวิตประจำวันเพื่อความเข้าใจง่าย
 * **Client Email Generator:** แปลงสถานะทางเทคนิคเป็นร่างอีเมลทางการส่งให้ลูกค้าได้ทันที
 
-### 3. Corporate Knowledge Base & RAG Retrieval Engine (Phase 2)
-* **Document Ingestion Engine:** รองรับเอกสาร Markdown, PRD, Swagger/OpenAPI JSON
-* **Smart Text Chunker:** ระบบหั่นเอกสารออกเป็นชิ้นย่อย 500–600 ตัวอักษร
-* **Vector & Term Similarity Search:** ค้นหาท่อนเอกสารสถาปัตยกรรมเดิมดึงมาเป็นบริบทให้ AI อัตโนมัติ
+### 3. Telegram Bot One-Click Delivery Integration
+* **Direct Dispatch:** ส่งโครงสร้างผลลัพธ์การแปลเข้า Telegram Channel / Group / Direct Chat ได้ในคลิกเดียว
+* **Built-in System Bot Token:** มี Bot Token ระบบพร้อมใช้งาน ไม่ต้องให้ผู้ใช้ตั้งค่าเอง
+* **Database Recipient Memory:** บันทึก Chat ID ที่เคยส่งลง SQLite ให้อัตโนมัติ เพื่อความสะดวกในการใช้งานรอบถัดไป
+* **Dual Deliverables:** ส่งทั้งข้อความสรุป Markdown และแนบไฟล์โครงสร้าง JSON/Markdown
 
-### 4. Enterprise Security & PII Sanitizer Guardrails (Phase 2)
-* **Automated Data Masking:** กรองและปิดบังข้อมูลลับ (API Keys, รหัสผ่าน, อีเมล, เบอร์โทรศัพท์, เลขบัตรประชาชน)
-* **Choice of Security Mode:** สลับการประมวลผลได้ระหว่าง Cloud AI Mode และ On-Premise / Private Mode
+### 4. Token Quota & Subscription Management
+* **Rate Limiting Guard:** จำกัดการใช้งานสำหรับผู้ใช้ฟรี (5 ครั้ง / 4 ชั่วโมง) ป้องกัน AI Cost Spikes
+* **Cooldown Alert Modal:** แจ้งเตือนเวลาที่ต้องรอแบบนับถอยหลัง (เช่น "ใช้ได้อีกทีใน 3 ชม. 45 นาที")
+* **Pro Tier Upgrade:** ปลดล็อกการใช้งานไม่จำกัด (Unlimited Usage) ผ่านแบบฟอร์ม PromptPay จำลอง
 
-### 5. Authentication & SQLite Persistent Database
-* **Full Authentication Flow:** สมัครสมาชิก, เข้าสู่ระบบ, เปลี่ยนรหัสผ่าน พร้อมเข้ารหัส SHA-256
-* **Resilient Offline Fallback:** มีระบบสำรองข้อมูลในเครื่อง ป้องกันข้อผิดพลาดเครือข่าย
+### 5. 🧪 Database Indexing Lab & Performance Optimization Studio
+* **Core Production Indexes:** เพิ่ม B-Tree Index บนตาราง `history`, `rag_chunks`, `users`, `telegram_recipients` เพื่อให้ Query รวดเร็ว
+* **Big Data Sandbox (50,000 แถว):** ปั๊มข้อมูลจำลองธุรกรรมขนาดใหญ่ด้วย High-Speed Bulk Seeding (PRAGMA optimized)
+* **Interactive Plan Analysis:** คำสั่ง `EXPLAIN QUERY PLAN` แสดงการทำงานระหว่าง **Full Table Scan ($O(N)$)** เทียบกับ **Index Seek ($O(\log N)$)**
+* **5 Experiment Presets:**
+  1. *Exact Match Query* (`customer_id = 42`)
+  2. *Date Range Query* (`transaction_date BETWEEN ...`)
+  3. *Function Wrap Pitfall* (`substr(transaction_date, 1, 7) = ...` สูญเสีย Index)
+  4. *Wildcard LIKE Pitfall* (`LIKE '%0042'` vs Prefix Search)
+  5. *Composite Index* (`status + transaction_date`)
+* **Student Guide:** คู่มือเรียนรู้ฉบับสมบูรณ์สำหรับนิสิตนำไปประยุกต์ใช้กับโปรเจกต์ของตนเอง (`indexing-lab-guide/STUDENT_LAB_GUIDE.md`)
 
 ---
 
@@ -195,40 +213,40 @@ npm run dev
 ITHumanAssistance/
 ├── backend/
 │   ├── app.db                 # SQLite Database เก็บข้อมูลถาวร
-│   ├── database.py            # SQLite Connection & Schema Management
+│   ├── database.py            # SQLite Connection, Schema, Production Indexes
 │   ├── Dockerfile             # Dockerfile สำหรับ FastAPI Microservice
-│   ├── main.py                # REST API Endpoints, CORS & Route Handlers
+│   ├── indexing_service.py    # Database Benchmark & Query Plan Analyzer Engine
+│   ├── main.py                # REST API Endpoints, Quota, Telegram & Lab Routes
 │   ├── models.py              # Pydantic Schemas สำหรับ Request/Response
 │   ├── requirements.txt       # Python Dependencies
-│   └── services.py            # RAG Engine, PII Sanitizer & Gemini AI Integration
+│   ├── services.py            # RAG Engine, PII Sanitizer & Gemini AI Integration
+│   └── telegram_service.py    # Telegram Bot Direct Delivery Service
+├── indexing-lab-guide/
+│   └── STUDENT_LAB_GUIDE.md   # คู่มือปฏิบัติการ Database Indexing สำหรับนิสิต
 ├── src/
 │   ├── components/
 │   │   ├── AuthModal.jsx             # Dialog เข้าสู่ระบบ / สมัครสมาชิก
 │   │   ├── AuthPage.jsx              # Form เข้าสู่ระบบพร้อม Password Strength Meter
 │   │   ├── ChangePasswordModal.jsx   # Dialog เปลี่ยนรหัสผ่าน
 │   │   ├── ImpactAnalysisCard.jsx    # Component แสดงผลกระทบสถาปัตยกรรมเดิม
+│   │   ├── IndexingLabModal.jsx      # ห้องทดลองจำลองและวิเคราะห์ Database Indexing
 │   │   ├── KnowledgeBaseModal.jsx    # Dialog จัดการคลังเอกสารองค์กร (RAG)
-│   │   ├── SettingsModal.jsx         # Dialog ตั้งค่า Gemini API Key
+│   │   ├── QuotaBadge.jsx            # ป้ายแสดงสถานะโควตาและแจ้งเตือนคูลดาวน์
+│   │   ├── SettingsModal.jsx         # Dialog ตั้งค่า Gemini API Key และ Telegram Bot
+│   │   ├── SubscriptionModal.jsx     # Dialog สมัครสมาชิก Pro Plan ปลดล็อกโควตา
+│   │   ├── TelegramModal.jsx         # Dialog ส่งผลลัพธ์เข้า Telegram Chat / Channel
 │   │   └── UserMenu.jsx              # Avatar และ Dropdown โปรไฟล์ผู้ใช้
-│   ├── data/
-│   │   ├── presets.js                # ชุดข้อมูลตัวอย่างทดสอบ
-│   │   └── techStackPresets.js       # ตัวเลือก Tech Stack สำเร็จรูป
 │   ├── services/
-│   │   ├── aiService.js              # Client Direct Gemini Caller
-│   │   ├── authService.js            # Auth Client พร้อม Offline Fallback
-│   │   ├── documentService.js        # RAG Knowledge Base API Client
-│   │   ├── securityService.js        # Client-side PII Sanitizer
+│   │   ├── indexingLabService.js     # API Service สำหรับ Indexing Lab
+│   │   ├── quotaService.js           # API Service จัดการ Quota & Subscription
+│   │   ├── telegramService.js        # Telegram Bot Client Service
 │   │   └── translator.js             # Main Translator Orchestrator
-│   ├── utils/
-│   │   └── exportUtils.js            # Multi-format Exporter (Jira, OpenAPI, PDF, Email)
 │   ├── App.jsx                       # หน้าจอหลักของ Web Application
 │   ├── index.css                     # Modern Glassmorphic Dark UI Design System
 │   └── main.jsx                      # React Entry Point
-├── dist/                             # Production Build Bundle พร้อมวางบน Web Server
 ├── docker-compose.yml                # Multi-container Setup
 ├── Dockerfile.frontend               # Nginx Web Server Container
 ├── start_server.bat                  # One-click Dual Server Launcher
-├── vite.config.js                    # Vite Bundler Configuration
 └── package.json                      # Node.js Dependencies & NPM Scripts
 ```
 

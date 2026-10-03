@@ -5,7 +5,16 @@ from fastapi import FastAPI, HTTPException, status, Header
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Optional, Any
 
-from backend.database import get_db_connection, init_db
+from backend.database import (
+    get_db_connection,
+    init_db,
+    save_telegram_chat_id,
+    get_latest_telegram_chat_id,
+    get_all_telegram_recipients,
+    check_user_quota,
+    consume_user_quota,
+    upgrade_user_tier
+)
 from backend.models import (
     TranslateRequest,
     TranslateResponse,
@@ -18,7 +27,25 @@ from backend.models import (
     RAGSearchRequest,
     RAGSearchResult,
     SanitizeRequest,
-    SanitizeResponse
+    SanitizeResponse,
+    TelegramSendRequest,
+    TelegramTestRequest,
+    TelegramResponse,
+    QuotaStatusResponse,
+    UpgradeTierRequest,
+    UpgradeTierResponse,
+    BenchmarkStatusResponse,
+    BenchmarkSeedRequest,
+    BenchmarkToggleIndexRequest,
+    BenchmarkExecuteRequest,
+    BenchmarkExecuteResponse
+)
+from backend.indexing_service import (
+    get_benchmark_status,
+    seed_benchmark_records,
+    clear_benchmark_records,
+    toggle_benchmark_indexes,
+    execute_benchmark_query
 )
 from backend.services import (
     translate_with_gemini,
@@ -28,6 +55,12 @@ from backend.services import (
     get_chunks_count,
     delete_document,
     search_rag_context
+)
+from backend.telegram_service import (
+    format_telegram_message,
+    send_telegram_message,
+    send_telegram_document,
+    test_telegram_connection
 )
 
 # Ensure database tables exist
@@ -279,6 +312,25 @@ async def translate(req: TranslateRequest):
             detail="Mode ต้องเป็น 'human-to-tech' หรือ 'tech-to-human' เท่านั้น"
         )
 
+    # ตรวจสอบโควต้าการใช้งาน Token/Requests ของผู้ใช้
+    quota_status = check_user_quota(req.username)
+    if not quota_status["allowed"]:
+        rem_sec = quota_status.get("remaining_seconds", 0)
+        hours = rem_sec // 3600
+        minutes = (rem_sec % 3600) // 60
+        time_str = f"{hours} ชม. {minutes} นาที" if hours > 0 else f"{minutes} นาที"
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "message": f"คุณใช้โควต้าฟรีครบกำหนดแล้ว ({quota_status['quota_limit']} ครั้ง/รอบ) สามารถใช้งานได้อีกทีในอีก {time_str} หรือสมัครสมาชิกแบบชำระเงินเพื่อใช้งานได้ไม่จำกัด",
+                "remaining_seconds": rem_sec,
+                "formatted_wait_time": time_str,
+                "tier": quota_status["tier"],
+                "quota_used": quota_status["quota_used"],
+                "quota_limit": quota_status["quota_limit"]
+            }
+        )
+
     translated_data, is_ai, sanitized_txt, masked_items, rag_sources = await translate_with_gemini(
         input_text=req.input_text,
         mode=req.mode,
@@ -290,6 +342,9 @@ async def translate(req: TranslateRequest):
         sanitize_pii=req.sanitize_pii if req.sanitize_pii is not None else True,
         security_mode=req.security_mode or "cloud"
     )
+
+    # บันทึกการใช้งานโควต้า
+    updated_quota = consume_user_quota(req.username)
 
     created_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     summary = translated_data.get("summary", "")
@@ -311,8 +366,10 @@ async def translate(req: TranslateRequest):
         masked_items=masked_items,
         rag_sources=rag_sources,
         is_ai=is_ai,
-        data=translated_data
+        data=translated_data,
+        quota_info=updated_quota
     )
+
 
 @app.get("/api/history", tags=["History Management (CRUD)"])
 def get_history():
@@ -349,3 +406,193 @@ def clear_all_history():
     conn.commit()
     conn.close()
     return {"message": "ล้างประวัติการแปลในฐานข้อมูลเรียบร้อยแล้ว"}
+
+# ==============================================================================
+# TELEGRAM BOT INTEGRATION ENDPOINTS
+# ==============================================================================
+
+@app.get("/api/telegram/config", tags=["Telegram Integration"])
+def get_telegram_config_endpoint():
+    """
+    ดึงค่าคอนฟิก Telegram เริ่มต้น (Token เริ่มต้นของระบบ และ Chat ID ที่เคยบันทึกไว้ใน DB)
+    """
+    latest_chat_id = get_latest_telegram_chat_id()
+    recipients = get_all_telegram_recipients()
+    return {
+        "default_token": "8893607516:AAE7EvjSy5Vn-wbLAmPcshI0WqEA42mzNmM",
+        "latest_chat_id": latest_chat_id or "",
+        "recent_chat_ids": [r["chat_id"] for r in recipients]
+    }
+
+@app.post("/api/telegram/test", response_model=TelegramResponse, tags=["Telegram Integration"])
+async def telegram_test_endpoint(req: TelegramTestRequest):
+    """
+    ทดสอบยิงข้อความทดสอบไปยัง Telegram Chat ID เพื่อยืนยันว่า Token และ Chat ID ใช้งานได้
+    พร้อมบันทึก Chat ID ลงใน SQLite Database
+    """
+    try:
+        res = await test_telegram_connection(req.token or "", req.chat_id)
+        msg_id = res.get("result", {}).get("message_id")
+        
+        # บันทึก Chat ID ลงฐานข้อมูลอัตโนมัติ
+        save_telegram_chat_id(req.chat_id)
+
+        return TelegramResponse(
+            success=True,
+            message="เชื่อมต่อ Telegram สำเร็จ! ได้รับข้อความทดสอบเรียบร้อยแล้ว",
+            telegram_message_id=msg_id
+        )
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+@app.post("/api/telegram/send", response_model=TelegramResponse, tags=["Telegram Integration"])
+async def telegram_send_endpoint(req: TelegramSendRequest):
+    """
+    ส่งโครงสร้างข้อมูล AI Translation Output ไปยัง Telegram Chat/Group
+    รองรับทั้งข้อความสรุปและแนบไฟล์ JSON โครงสร้างเต็ม
+    พร้อมบันทึก Chat ID ลงใน SQLite Database ให้โดยอัตโนมัติ
+    """
+    try:
+        # 1. Format and send summary message
+        formatted_text = format_telegram_message(req.data, req.mode)
+        send_res = await send_telegram_message(
+            token=req.token or "",
+            chat_id=req.chat_id,
+            text=formatted_text,
+            parse_mode="HTML"
+        )
+        msg_id = send_res.get("result", {}).get("message_id")
+        has_file = False
+
+        # 2. Optionally send full JSON structure file
+        if req.include_json_file:
+            json_bytes = json.dumps(req.data, ensure_ascii=False, indent=2).encode("utf-8")
+            timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"ai_spec_{req.mode}_{timestamp_str}.json"
+            await send_telegram_document(
+                token=req.token or "",
+                chat_id=req.chat_id,
+                file_bytes=json_bytes,
+                filename=filename,
+                caption=f"📁 โครงสร้างข้อมูล JSON เต็ม ({req.mode})"
+            )
+            has_file = True
+
+        # 3. บันทึก Chat ID ลงใน SQLite Database อัตโนมัติเพื่อให้ใช้ในรอบถัดไป
+        save_telegram_chat_id(req.chat_id)
+
+        return TelegramResponse(
+            success=True,
+            message="ส่งโครงสร้างข้อมูลเข้า Telegram เรียบร้อยแล้ว (บันทึก Chat ID ลงฐานข้อมูลแล้ว)",
+            telegram_message_id=msg_id,
+            has_file=has_file
+        )
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+# ==============================================================================
+# TOKEN & SUBSCRIPTION QUOTA MANAGEMENT ENDPOINTS
+# ==============================================================================
+
+@app.get("/api/user/quota", response_model=QuotaStatusResponse, tags=["Subscription & Quota"])
+def get_user_quota_endpoint(username: Optional[str] = None):
+    """
+    ตรวจสอบโควต้าการใช้งาน Token/Requests และระยะเวลาที่เหลือของรอบ
+    """
+    quota_info = check_user_quota(username)
+    rem_sec = quota_info.get("remaining_seconds", 0)
+    hours = rem_sec // 3600
+    minutes = (rem_sec % 3600) // 60
+    time_str = f"{hours} ชม. {minutes} นาที" if hours > 0 else f"{minutes} นาที" if minutes > 0 else "0 นาที"
+
+    return QuotaStatusResponse(
+        allowed=quota_info["allowed"],
+        tier=quota_info["tier"],
+        quota_used=quota_info["quota_used"],
+        quota_limit=quota_info["quota_limit"],
+        quota_reset_at=quota_info.get("quota_reset_at"),
+        remaining_seconds=rem_sec,
+        formatted_wait_time=time_str
+    )
+
+@app.post("/api/user/upgrade", response_model=UpgradeTierResponse, tags=["Subscription & Quota"])
+def upgrade_tier_endpoint(req: UpgradeTierRequest):
+    """
+    อัปเกรดสถานะสมาชิกเป็น Pro (Unlimited Tokens) หลังยืนยันการชำระเงิน
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM users WHERE username = ?", (req.username,))
+    existing = cursor.fetchone()
+    conn.close()
+
+    if not existing:
+        raise HTTPException(status_code=404, detail=f"ไม่พบผู้ใช้งาน '{req.username}' ในระบบ กรุณาเข้าสู่ระบบก่อนทำการอัปเกรด")
+
+    success = upgrade_user_tier(req.username, req.target_tier)
+    if not success:
+        raise HTTPException(status_code=400, detail="ไม่สามารถอัปเกรดแพ็กเกจได้ กรุณาลองใหม่อีกครั้ง")
+
+    return UpgradeTierResponse(
+        success=True,
+        message=f"ยินดีด้วย! คุณได้อัปเกรดเป็นสมาชิก {req.target_tier.upper()} เรียบร้อยแล้ว (ใช้งานได้ไม่จำกัด)",
+        tier=req.target_tier,
+        username=req.username
+    )
+
+# ==========================================
+# Database Indexing Lab Endpoints for Students
+# ==========================================
+
+@app.get("/api/indexing-lab/status", response_model=BenchmarkStatusResponse, tags=["Indexing Lab"])
+def get_indexing_lab_status():
+    """
+    ดึงสถานะตารางทดสอบ benchmark_records: จำนวนแถว, รายการ Index ที่เปิดใช้งาน, ขนาด DB
+    """
+    try:
+        return get_benchmark_status()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"เกิดข้อผิดพลาดในการดึงสถานะแล็บ: {str(e)}")
+
+@app.post("/api/indexing-lab/seed", tags=["Indexing Lab"])
+def seed_indexing_lab_data(req: BenchmarkSeedRequest):
+    """
+    จำลองข้อมูลธุรกรรมขนาดใหญ่ (Default 50,000 แถว) สำหรับทดสอบวัดประสิทธิภาพ Indexing
+    """
+    try:
+        result = seed_benchmark_records(count=req.count)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"เกิดข้อผิดพลาดในการปั๊มข้อมูล: {str(e)}")
+
+@app.post("/api/indexing-lab/clear", tags=["Indexing Lab"])
+def clear_indexing_lab_data():
+    """
+    ล้างข้อมูลทั้งหมดในตาราง benchmark_records
+    """
+    try:
+        return clear_benchmark_records()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"เกิดข้อผิดพลาดในการล้างข้อมูล: {str(e)}")
+
+@app.post("/api/indexing-lab/toggle-index", tags=["Indexing Lab"])
+def toggle_indexing_lab_indexes(req: BenchmarkToggleIndexRequest):
+    """
+    สลับเปิด-ปิด (CREATE / DROP) Index ทั้งหมดในตาราง benchmark_records เพื่อเปรียบเทียบผล
+    """
+    try:
+        return toggle_benchmark_indexes(enable=req.enable)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"เกิดข้อผิดพลาดในการจัดการ Index: {str(e)}")
+
+@app.post("/api/indexing-lab/execute", response_model=BenchmarkExecuteResponse, tags=["Indexing Lab"])
+def execute_indexing_lab_query(req: BenchmarkExecuteRequest):
+    """
+    รัน SQL Query พร้อมดึง EXPLAIN QUERY PLAN และจับเวลา Execution Time (ms)
+    """
+    try:
+        return execute_benchmark_query(sql_query=req.query)
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"เกิดข้อผิดพลาดในการรัน Query: {str(e)}")
