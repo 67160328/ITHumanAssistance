@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LogIn,
   UserPlus,
@@ -19,8 +19,12 @@ import {
 } from 'lucide-react';
 import { login, register } from '../services/authService';
 
-export default function AuthPage({ onLoginSuccess }) {
-  const [activeTab, setActiveTab] = useState('login'); // 'login' | 'register'
+export default function AuthPage({ onLoginSuccess, initialTab = 'login' }) {
+  const [activeTab, setActiveTab] = useState(initialTab); // 'login' | 'register'
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   // Login form
   const [loginUsername, setLoginUsername] = useState('');

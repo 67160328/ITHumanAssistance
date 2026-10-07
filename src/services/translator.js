@@ -43,14 +43,18 @@ export async function translateText(
   const trimmed = input.trim();
   const baseUrl = getBackendBaseUrl();
 
-  // 1. Try FastAPI REST Backend Endpoint (/api/translate)
+  // 1. Try FastAPI REST Backend Endpoint (/api/translate) with fast timeout
   if (baseUrl) {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+
       const response = await fetch(`${baseUrl}/api/translate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
+        signal: controller.signal,
         body: JSON.stringify({
           input_text: trimmed,
           mode: mode,
@@ -64,6 +68,8 @@ export async function translateText(
           username: username
         })
       });
+
+      clearTimeout(timeoutId);
 
       if (response.status === 429) {
         const errJson = await response.json();

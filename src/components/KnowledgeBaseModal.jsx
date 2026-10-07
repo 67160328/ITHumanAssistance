@@ -147,10 +147,10 @@ export default function KnowledgeBaseModal({ isOpen, onClose, onDocumentsUpdated
               <Database size={20} color="#fff" />
             </div>
             <div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#f8fafc' }}>
+              <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-main)' }}>
                 Corporate Knowledge Base & RAG Engine
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 จัดเก็บเอกสารสถาปัตยกรรมและ PRD ขององค์กรเพื่อป้อนเป็นบริบทให้ AI
               </div>
             </div>
@@ -222,27 +222,29 @@ export default function KnowledgeBaseModal({ isOpen, onClose, onDocumentsUpdated
                     key={doc.id}
                     style={{
                       padding: '1rem',
-                      backgroundColor: 'rgba(15, 23, 42, 0.6)',
-                      borderRadius: '12px',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      backgroundColor: 'var(--bg-subtle)',
+                      borderRadius: '10px',
+                      border: '1px solid var(--border-light)',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '0.5rem'
+                      gap: '0.45rem'
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <FileText size={18} color="#818cf8" />
-                        <span style={{ fontWeight: 600, color: '#f1f5f9', fontSize: '0.95rem' }}>
+                        <FileText size={18} color="var(--primary)" />
+                        <span style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '0.95rem' }}>
                           {doc.title}
                         </span>
                         <span style={{
                           fontSize: '0.7rem',
-                          backgroundColor: 'rgba(99, 102, 241, 0.2)',
-                          color: '#a5b4fc',
-                          padding: '2px 6px',
+                          backgroundColor: 'var(--bg-accent-soft)',
+                          color: 'var(--primary)',
+                          border: '1px solid var(--brand-pill-border)',
+                          padding: '1px 6px',
                           borderRadius: '4px',
-                          textTransform: 'uppercase'
+                          textTransform: 'uppercase',
+                          fontWeight: 600
                         }}>
                           {doc.doc_type || 'markdown'}
                         </span>

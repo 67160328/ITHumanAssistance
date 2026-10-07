@@ -84,7 +84,7 @@ export default function SubscriptionModal({
               }}>
                 <Crown size={26} />
               </div>
-              <h2 style={{ fontSize: '1.45rem', fontWeight: 700, color: '#f8fafc', marginBottom: '0.3rem' }}>
+              <h2 style={{ fontSize: '1.45rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.3rem', fontFamily: 'var(--font-thai)' }}>
                 ปลดล็อกการใช้งานไม่จำกัดด้วย Pro Plan
               </h2>
               {remainingTimeText ? (
@@ -92,20 +92,21 @@ export default function SubscriptionModal({
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '0.4rem',
-                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                  border: '1px solid rgba(239, 68, 68, 0.35)',
-                  color: '#f87171',
+                  backgroundColor: '#FEF2F2',
+                  border: '1px solid #FECACA',
+                  color: '#DC2626',
                   padding: '4px 12px',
                   borderRadius: '20px',
                   fontSize: '0.82rem',
-                  fontWeight: 500,
-                  marginTop: '0.3rem'
+                  fontWeight: 600,
+                  marginTop: '0.3rem',
+                  fontFamily: 'var(--font-thai)'
                 }}>
                   <Clock size={14} />
                   <span>โควต้าฟรีหมดแล้ว: ใช้งานได้อีกทีในอีก {remainingTimeText}</span>
                 </div>
               ) : (
-                <p style={{ color: '#94a3b8', fontSize: '0.88rem' }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', fontFamily: 'var(--font-thai)' }}>
                   เพิ่มประสิทธิภาพการแปลภาษาไอทีและวิเคราะห์สถาปัตยกรรมระดับองค์กรอย่างไร้ขีดจำกัด
                 </p>
               )}
@@ -115,8 +116,8 @@ export default function SubscriptionModal({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
               {/* Free Tier Card */}
               <div style={{
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                background: 'rgba(15, 23, 42, 0.4)',
+                border: '1px solid var(--border-light)',
+                background: 'var(--bg-subtle)',
                 borderRadius: '12px',
                 padding: '1.2rem',
                 display: 'flex',
@@ -124,29 +125,29 @@ export default function SubscriptionModal({
                 justifyContent: 'space-between'
               }}>
                 <div>
-                  <div style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>
-                    Free Tier
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
+                    Free Tier (โหมดฟรี)
                   </div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#f8fafc', margin: '0.3rem 0' }}>
-                    ฿0 <span style={{ fontSize: '0.8rem', color: '#64748b' }}>/ ตลอดชีพ</span>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-main)', margin: '0.3rem 0' }}>
+                    ฿0 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>/ ตลอดชีพ</span>
                   </div>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: '1rem 0 0 0', fontSize: '0.82rem', color: '#cbd5e1' }}>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: '1rem 0 0 0', fontSize: '0.82rem', color: 'var(--text-body)', fontFamily: 'var(--font-thai)' }}>
                     <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                      <Check size={14} color="#94a3b8" />
-                      <span>5 ครั้ง ต่อรอบ 4 ชั่วโมง</span>
+                      <Check size={14} color="var(--primary)" />
+                      <span>โควต้า 5 ครั้ง / 4 ชม.</span>
                     </li>
                     <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                      <Check size={14} color="#94a3b8" />
-                      <span>แปล Human-to-Tech พื้นฐาน</span>
+                      <Check size={14} color="var(--primary)" />
+                      <span>จำกัดความยาวอินพุต ≤ 300 ตัวอักษร</span>
                     </li>
-                    <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b' }}>
-                      <X size={14} />
-                      <span>จำกัดความเร็วเมื่อคนใช้งานเยอะ</span>
+                    <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <Check size={14} color="var(--primary)" />
+                      <span>RAG Context พื้นฐาน</span>
                     </li>
                   </ul>
                 </div>
-                <div style={{ marginTop: '1rem', fontSize: '0.75rem', color: '#64748b', textAlign: 'center' }}>
-                  (แพ็กเกจปัจจุบัน)
+                <div style={{ marginTop: '1rem', fontSize: '0.78rem', color: 'var(--text-muted)', textAlign: 'center', fontFamily: 'var(--font-thai)' }}>
+                  (แพ็กเกจปัจจุบันของคุณ)
                 </div>
               </div>
 
@@ -154,8 +155,8 @@ export default function SubscriptionModal({
               <div 
                 onClick={() => setSelectedPlan('pro_monthly')}
                 style={{
-                  border: '2px solid #f59e0b',
-                  background: 'linear-gradient(145deg, rgba(245, 158, 11, 0.1) 0%, rgba(15, 23, 42, 0.8) 100%)',
+                  border: '2px solid #F59E0B',
+                  background: '#FFFBEB',
                   borderRadius: '12px',
                   padding: '1.2rem',
                   display: 'flex',
@@ -163,7 +164,7 @@ export default function SubscriptionModal({
                   justifyContent: 'space-between',
                   position: 'relative',
                   cursor: 'pointer',
-                  boxShadow: '0 0 25px rgba(245, 158, 11, 0.15)'
+                  boxShadow: '0 4px 12px rgba(245, 158, 11, 0.12)'
                 }}
               >
                 <div style={{
@@ -181,27 +182,27 @@ export default function SubscriptionModal({
                   แนะนำ
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.85rem', color: '#fbbf24', fontWeight: 600, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                  <div style={{ fontSize: '0.85rem', color: '#B45309', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                     <Sparkles size={14} /> Pro Unlimited
                   </div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#f8fafc', margin: '0.3rem 0' }}>
-                    ฿299 <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>/ เดือน</span>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#92400E', margin: '0.3rem 0' }}>
+                    ฿299 <span style={{ fontSize: '0.8rem', color: '#B45309' }}>/ เดือน</span>
                   </div>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: '1rem 0 0 0', fontSize: '0.82rem', color: '#f1f5f9' }}>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: '1rem 0 0 0', fontSize: '0.82rem', color: '#78350F', fontFamily: 'var(--font-thai)' }}>
                     <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                      <Check size={14} color="#10b981" />
+                      <Check size={14} color="#059669" />
                       <strong>ใช้งานไม่จำกัด (Unlimited AI Tokens)</strong>
                     </li>
                     <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                      <Check size={14} color="#10b981" />
+                      <Check size={14} color="#059669" />
                       <span>ความเร็วประมวลผลสูงสุด (High Priority)</span>
                     </li>
                     <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                      <Check size={14} color="#10b981" />
+                      <Check size={14} color="#059669" />
                       <span>ส่งสรุปและ JSON เข้า Telegram ไม่อั้น</span>
                     </li>
                     <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Check size={14} color="#10b981" />
+                      <Check size={14} color="#059669" />
                       <span>RAG Corporate Knowledge Base เต็มรูปแบบ</span>
                     </li>
                   </ul>

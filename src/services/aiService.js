@@ -19,10 +19,10 @@ const SYSTEM_PROMPT = `คุณคือ "ล่ามแปลภาษาไ�
 - ปรับโทนเสียงให้มีความเป็นมืออาชีพ สุภาพ มีความรับผิดชอบ และสรุปสั้นๆ ว่า "ผู้ใช้ต้องรออีกนานแค่ไหน/ทีมงานกำลังแก้ไขอย่างไร"`;
 
 const CANDIDATE_MODELS = [
-  'gemini-flash-latest',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
   'gemini-2.5-flash-lite',
-  'gemini-3.1-flash-lite',
-  'gemini-3.6-flash'
+  'gemini-flash-latest'
 ];
 
 export async function callGeminiApi(inputText, mode, apiKey) {

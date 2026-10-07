@@ -2,7 +2,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 import AuthPage from './AuthPage';
 
-export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
+export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab = 'login' }) {
   if (!isOpen) return null;
 
   return (
@@ -20,6 +20,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
         </button>
 
         <AuthPage
+          initialTab={initialTab}
           onLoginSuccess={(username, token) => {
             onLoginSuccess(username, token);
             onClose();

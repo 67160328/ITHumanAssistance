@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PRESETS } from './data/presets';
 import { TECH_STACK_PRESETS } from './data/techStackPresets';
 import { translateText, getStoredApiKey } from './services/translator';
-import { getUser, isLoggedIn, logout } from './services/authService';
+import { getUser, logout } from './services/authService';
 import { getDocuments } from './services/documentService';
 import SettingsModal from './components/SettingsModal';
 import AuthModal from './components/AuthModal';
@@ -12,10 +12,15 @@ import KnowledgeBaseModal from './components/KnowledgeBaseModal';
 import ImpactAnalysisCard from './components/ImpactAnalysisCard';
 import TelegramModal from './components/TelegramModal';
 import SubscriptionModal from './components/SubscriptionModal';
-import IndexingLabModal from './components/IndexingLabModal';
 import QuotaBadge from './components/QuotaBadge';
-import { getQuotaStatus, consumeLocalQuota } from './services/quotaService';
-import { downloadMarkdownFile, exportToPDF, generateJiraFormat, downloadOpenAPIJson, generateClientEmailDraft } from './utils/exportUtils';
+import { getQuotaStatus, consumeLocalQuota, isProUser, setLocalTier } from './services/quotaService';
+import { 
+  downloadMarkdownFile, 
+  exportToPDF, 
+  generateJiraFormat, 
+  downloadOpenAPIJson, 
+  generateClientEmailDraft 
+} from './utils/exportUtils';
 import {
   Sparkles,
   ArrowRightLeft,
@@ -26,7 +31,6 @@ import {
   HelpCircle,
   AlertTriangle,
   Clock,
-  Zap,
   Layers,
   MessageSquareText,
   RotateCcw,
@@ -34,27 +38,28 @@ import {
   Bot,
   Loader2,
   FileCode2,
-  Server,
   FileText,
   Printer,
   Mail,
-  Shield,
   ShieldCheck,
   Database,
   User,
-  Lock,
-  Radio,
-  Send
+  Send,
+  Zap,
+  Palette
 } from 'lucide-react';
 
 export default function App() {
+  // Theme state: fixed to clean 'blue' (ฟ้า-ขาว)
+  const [currentTheme, setCurrentTheme] = useState('blue');
+
   const [mode, setMode] = useState('human-to-tech'); // 'human-to-tech' | 'tech-to-human'
   const [inputText, setInputText] = useState('');
   const [projectContext, setProjectContext] = useState('');
-  const [budgetLevel, setBudgetLevel] = useState(''); // '', 'Low Budget', 'Medium Budget', 'Enterprise Budget'
-  const [timelineConstraint, setTimelineConstraint] = useState(''); // '', 'Urgent (<1 week)', 'Standard (1 month)', 'Flexible'
+  const [budgetLevel, setBudgetLevel] = useState('');
+  const [timelineConstraint, setTimelineConstraint] = useState('');
   
-  // Phase 2 Enterprise Controls
+  // Enterprise Controls
   const [useRag, setUseRag] = useState(true);
   const [sanitizePii, setSanitizePii] = useState(true);
   const [securityMode, setSecurityMode] = useState('cloud'); // 'cloud' | 'private-local'
@@ -68,51 +73,60 @@ export default function App() {
   // Modals state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authInitialTab, setAuthInitialTab] = useState('login'); // 'login' | 'register'
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isKnowledgeBaseOpen, setIsKnowledgeBaseOpen] = useState(false);
   const [isTelegramModalOpen, setIsTelegramModalOpen] = useState(false);
   const [isSubscriptionOpen, setIsSubscriptionOpen] = useState(false);
-  const [isIndexingLabOpen, setIsIndexingLabOpen] = useState(false);
   const [quotaStatus, setQuotaStatus] = useState(null);
-  const [lockoutWaitTime, setLockoutWaitTime] = useState(null);
+  const [isPro, setIsPro] = useState(() => isProUser());
   
   // Auth & Knowledge state
   const [currentUser, setCurrentUser] = useState(getUser());
   const [docCount, setDocCount] = useState(2);
   const [currentApiKey, setCurrentApiKey] = useState(getStoredApiKey());
 
+  // Apply Theme Attribute to HTML root
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    localStorage.setItem('it_translator_theme', currentTheme);
+  }, [currentTheme]);
+
   const refreshQuota = async (user = currentUser) => {
     try {
       const q = await getQuotaStatus(user);
       setQuotaStatus(q);
-      if (!q.allowed) {
-        setLockoutWaitTime(q.formatted_wait_time || 'สักครู่');
-      } else {
-        setLockoutWaitTime(null);
-      }
+      setIsPro(isProUser(user));
     } catch (e) {}
   };
 
   useEffect(() => {
-    // Initial fetch of doc count and quota
     getDocuments().then(docs => {
       if (docs && docs.length) setDocCount(docs.length);
     }).catch(() => {});
-
     refreshQuota();
   }, [currentUser]);
 
   const currentPresets = mode === 'human-to-tech' ? PRESETS.humanToTech : PRESETS.techToHuman;
 
+  // Free Tier input length limit (e.g. 350 chars)
+  const FREE_TIER_MAX_CHARS = 350;
+
   const handleTranslate = async () => {
     if (!inputText.trim()) return;
 
-    // Check quota before initiating translation
+    // 1. Check Context length limit for Free tier
+    if (!isPro && inputText.trim().length > FREE_TIER_MAX_CHARS) {
+      showToast(`โหมดฟรีจำกัดข้อความไม่เกิน ${FREE_TIER_MAX_CHARS} ตัวอักษร (ปัจจุบัน ${inputText.trim().length} ตัวอักษร) กรุณาย่อข้อความหรืออัปเกรด Pro`);
+      setIsSubscriptionOpen(true);
+      return;
+    }
+
+    // 2. Check quota before translating
     const currentQ = await getQuotaStatus(currentUser);
     if (!currentQ.allowed) {
-      setLockoutWaitTime(currentQ.formatted_wait_time || 'สักครู่');
       setIsSubscriptionOpen(true);
-      showToast(`โควต้าฟรีหมดแล้ว (ใช้งานได้อีกทีในอีก ${currentQ.formatted_wait_time}) กรุณาอัปเกรดเป็น Pro เพื่อใช้งานต่อ`);
+      showToast(`โควต้าฟรีของคุณหมดแล้ว (รออีก ${currentQ.formatted_wait_time || 'สักครู่'}) หรืออัปเกรดเป็น Pro`);
       return;
     }
 
@@ -135,7 +149,6 @@ export default function App() {
       refreshQuota();
     } catch (err) {
       if (err.isQuotaExceeded) {
-        setLockoutWaitTime(err.quotaDetails?.formatted_wait_time || 'สักครู่');
         setIsSubscriptionOpen(true);
         showToast(err.message);
       } else {
@@ -148,12 +161,10 @@ export default function App() {
 
   const handleSelectPreset = async (preset) => {
     setInputText(preset.input);
-
     const currentQ = await getQuotaStatus(currentUser);
     if (!currentQ.allowed) {
-      setLockoutWaitTime(currentQ.formatted_wait_time || 'สักครู่');
       setIsSubscriptionOpen(true);
-      showToast(`โควต้าฟรีหมดแล้ว (ใช้งานได้อีกทีในอีก ${currentQ.formatted_wait_time}) กรุณาอัปเกรดเป็น Pro`);
+      showToast(`โควต้าฟรีหมดแล้ว (รออีก ${currentQ.formatted_wait_time || 'สักครู่'})`);
       return;
     }
 
@@ -176,7 +187,6 @@ export default function App() {
       refreshQuota();
     } catch (err) {
       if (err.isQuotaExceeded) {
-        setLockoutWaitTime(err.quotaDetails?.formatted_wait_time || 'สักครู่');
         setIsSubscriptionOpen(true);
         showToast(err.message);
       } else {
@@ -243,7 +253,7 @@ export default function App() {
     if (!translationResult) return;
     const jiraMarkdown = generateJiraFormat(translationResult);
     navigator.clipboard.writeText(jiraMarkdown);
-    showToast('คัดลอกรูปแบบ Jira / Confluence Format สำเร็จ!');
+    showToast('คัดลอกรูปแบบ Jira Format สำเร็จ!');
   };
 
   const handleExportMarkdown = () => {
@@ -268,12 +278,12 @@ export default function App() {
     if (!translationResult) return;
     const emailDraft = generateClientEmailDraft(translationResult);
     navigator.clipboard.writeText(emailDraft);
-    showToast('คัดลอกร่างอีเมลส่งลูกค้า (Client Email Draft) สำเร็จ!');
+    showToast('คัดลอกร่างอีเมลส่งลูกค้า สำเร็จ!');
   };
 
   const showToast = (msg) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 3500);
+    setTimeout(() => setToastMessage(''), 3000);
   };
 
   return (
@@ -291,10 +301,24 @@ export default function App() {
       {/* Auth Modal (Login / Register) */}
       <AuthModal
         isOpen={isAuthModalOpen}
+        initialTab={authInitialTab}
         onClose={() => setIsAuthModalOpen(false)}
         onLoginSuccess={(username) => {
           setCurrentUser(username);
+          refreshQuota(username);
           showToast(`ยินดีต้อนรับคุณ ${username} เข้าสู่ระบบ!`);
+        }}
+      />
+
+      {/* Subscription & Quota Upgrade Modal */}
+      <SubscriptionModal
+        isOpen={isSubscriptionOpen}
+        onClose={() => setIsSubscriptionOpen(false)}
+        currentUser={currentUser}
+        remainingTimeText={quotaStatus?.formatted_wait_time}
+        onUpgradeSuccess={(res) => {
+          showToast(res.message || 'ยินดีต้อนรับสู่สมาชิก Pro Plan!');
+          refreshQuota();
         }}
       />
 
@@ -305,14 +329,14 @@ export default function App() {
         username={currentUser}
       />
 
-      {/* Corporate Knowledge Base Modal (RAG) */}
+      {/* Knowledge Base Modal */}
       <KnowledgeBaseModal
         isOpen={isKnowledgeBaseOpen}
         onClose={() => setIsKnowledgeBaseOpen(false)}
         onDocumentsUpdated={(count) => setDocCount(count)}
       />
 
-      {/* Telegram Send Modal */}
+      {/* Telegram Modal */}
       <TelegramModal
         isOpen={isTelegramModalOpen}
         onClose={() => setIsTelegramModalOpen(false)}
@@ -320,283 +344,329 @@ export default function App() {
         onSentSuccess={(msg) => showToast(msg || 'ส่งเข้า Telegram สำเร็จแล้ว!')}
       />
 
-      {/* Subscription & Quota Upgrade Modal */}
-      <SubscriptionModal
-        isOpen={isSubscriptionOpen}
-        onClose={() => setIsSubscriptionOpen(false)}
-        currentUser={currentUser}
-        remainingTimeText={lockoutWaitTime}
-        onUpgradeSuccess={(res) => {
-          showToast(res.message || 'ยินดีต้อนรับสู่สมาชิก Pro Plan!');
-          refreshQuota();
-        }}
-      />
+      {/* TOP EXECUTIVE NAVBAR (สะอาดตา เป็นระเบียบ ไม่รก) */}
+      <header className="top-navbar">
+        <div className="nav-brand">
+          <div className="brand-icon">
+            <Sparkles size={20} />
+          </div>
+          <div className="brand-title-wrap">
+            <span className="brand-title">IT-to-Human Translator</span>
+            <span className="brand-badge">Enterprise Assistance Platform</span>
+          </div>
+        </div>
 
-      {/* Database Indexing Lab Modal */}
-      <IndexingLabModal
-        isOpen={isIndexingLabOpen}
-        onClose={() => setIsIndexingLabOpen(false)}
-      />
-
-      {/* Header */}
-      <header className="app-header">
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.6rem', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap' }}>
-          <div className="header-badge" style={{ margin: 0 }}>
-            <Sparkles size={16} />
-            <span>ระบบแปลภาษาไอทีอัจฉริยะ (Enterprise Edition)</span>
+        {/* Right Nav Utilities */}
+        <div className="nav-actions">
+          {/* Active Palette Badge: ฟ้า-ขาว (Ocean Tech & Crisp White) */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: 'var(--bg-accent-soft)',
+            border: '1px solid var(--brand-pill-border)',
+            borderRadius: '9999px',
+            padding: '4px 12px',
+            fontSize: '0.78rem',
+            fontWeight: 600,
+            color: 'var(--primary)',
+            fontFamily: 'var(--font-thai)'
+          }}>
+            <span style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              backgroundColor: '#2563EB',
+              display: 'inline-block',
+              boxShadow: '0 0 6px rgba(37, 99, 235, 0.4)'
+            }}></span>
+            <span>ธีมฟ้า-ขาว (Ocean Tech)</span>
           </div>
 
-          {/* Quota Badge & Upgrade Button */}
-          <QuotaBadge
-            quotaStatus={quotaStatus}
-            onOpenSubscription={() => setIsSubscriptionOpen(true)}
-          />
-
-          {/* Database Indexing Lab Button */}
-          <button
-            className="settings-badge-btn"
-            style={{ borderColor: 'rgba(16, 185, 129, 0.4)', background: 'rgba(16, 185, 129, 0.15)', color: '#6ee7b7' }}
-            onClick={() => setIsIndexingLabOpen(true)}
-          >
-            <Zap size={14} color="#34d399" />
-            <span>🧪 Database Indexing Lab</span>
+          {/* Quick Demo Switcher & Mode Indicator (สังเกตสถานะปัจจุบันได้ชัดเจน) */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            backgroundColor: isPro ? '#FFFBEB' : '#F8FAFC',
+            border: `1px solid ${isPro ? '#FDE68A' : 'var(--border-medium)'}`,
+            padding: '3px 8px 3px 10px',
+            borderRadius: '9999px'
+          }}>
+            <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>สถานะ:</span>
             <span style={{
-              fontSize: '0.7rem',
-              backgroundColor: '#059669',
-              color: '#fff',
-              padding: '1px 6px',
-              borderRadius: '9999px',
-              fontWeight: 600
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontWeight: 700,
+              fontSize: '0.76rem',
+              color: isPro ? '#D97706' : '#2563EB'
             }}>
-              50k Rows
+              <span style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                backgroundColor: isPro ? '#D97706' : '#2563EB',
+                display: 'inline-block'
+              }}></span>
+              {isPro ? '👑 โหมด PRO' : '⚡ โหมดฟรี'}
             </span>
-          </button>
 
-          {/* Knowledge Base RAG Button */}
+            {/* ปุ่มกดสลับ */}
+            <button
+              type="button"
+              style={{
+                backgroundColor: isPro ? '#F59E0B' : '#2563EB',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '9999px',
+                padding: '3px 9px',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: 'var(--font-thai)',
+                marginLeft: '4px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+              }}
+              onClick={() => {
+                const nextPro = !isPro;
+                setLocalTier(nextPro ? 'pro' : 'free');
+                setIsPro(nextPro);
+                if (nextPro) {
+                  showToast('👑 สลับเป็นโหมด Pro Unlimited (ไม่จำกัดความยาว)');
+                } else {
+                  showToast('⚡ สลับเป็นโหมด Free Tier (จำกัด ≤ 350 ตัวอักษร)');
+                }
+                refreshQuota();
+              }}
+              title="คลิกเพื่อสลับระหว่างโหมด Free และ Pro"
+            >
+              {isPro ? 'คลิกเปลี่ยนเป็น Free' : 'คลิกเปลี่ยนเป็น Pro'}
+            </button>
+          </div>
+
+          {/* Knowledge Base Button */}
           <button
-            className="settings-badge-btn"
-            style={{ borderColor: 'rgba(99, 102, 241, 0.4)', background: 'rgba(99, 102, 241, 0.15)', color: '#c7d2fe' }}
+            className="nav-btn"
             onClick={() => setIsKnowledgeBaseOpen(true)}
+            title="จัดการคลังความรู้องค์กร"
           >
-            <Database size={14} color="#818cf8" />
-            <span>Corporate Knowledge Base</span>
+            <Database size={15} color="var(--primary)" />
+            <span>Knowledge Base</span>
             <span style={{
-              fontSize: '0.7rem',
-              backgroundColor: '#6366f1',
-              color: '#fff',
+              background: 'var(--bg-accent-soft)',
+              color: 'var(--primary)',
               padding: '1px 6px',
               borderRadius: '9999px',
+              fontSize: '0.72rem',
               fontWeight: 600
             }}>
-              {docCount} Docs (RAG)
+              {docCount}
             </span>
           </button>
 
-          {/* FastAPI Swagger Link */}
-          <a
-            href="http://localhost:8000/docs"
-            target="_blank"
-            rel="noreferrer"
-            className="settings-badge-btn"
-            style={{ textDecoration: 'none' }}
+          {/* Settings / API Key */}
+          <button 
+            className="nav-btn" 
+            onClick={() => setIsSettingsOpen(true)}
+            title="ตั้งค่า Gemini API Key & Telegram"
           >
-            <Server size={14} className="text-emerald-400" />
-            <span>FastAPI Swagger (/docs)</span>
-            <FileCode2 size={14} />
-          </a>
-
-          {/* Settings / API Key button */}
-          <button className="settings-badge-btn" onClick={() => setIsSettingsOpen(true)}>
-            {currentApiKey ? (
-              <>
-                <span className="status-dot online"></span>
-                <Bot size={15} />
-                <span>Google Gemini AI</span>
-              </>
-            ) : (
-              <>
-                <span className="status-dot offline"></span>
-                <span>ตั้งค่า API Key</span>
-              </>
-            )}
-            <Settings size={14} style={{ marginLeft: '4px' }} />
+            <Bot size={15} color={currentApiKey ? 'var(--accent-emerald)' : 'var(--text-muted)'} />
+            <span>{currentApiKey ? 'Gemini AI' : 'ตั้งค่า Key'}</span>
+            <Settings size={13} style={{ opacity: 0.6 }} />
           </button>
 
-          {/* User Auth Menu */}
+          {/* User Auth (เข้าสู่ระบบ & สมัครสมาชิก) */}
           {currentUser ? (
             <UserMenu
               username={currentUser}
+              isPro={isPro}
+              onTogglePro={() => {
+                const nextPro = !isPro;
+                setLocalTier(nextPro ? 'pro' : 'free');
+                setIsPro(nextPro);
+                if (nextPro) {
+                  showToast('👑 สลับเป็นโหมด Pro Unlimited (ไม่จำกัดความยาว)');
+                } else {
+                  showToast('⚡ สลับเป็นโหมด Free Tier (จำกัด ≤ 350 ตัวอักษร)');
+                }
+                refreshQuota();
+              }}
               onChangePassword={() => setIsChangePasswordOpen(true)}
               onLogout={handleLogout}
             />
           ) : (
-            <button
-              className="settings-badge-btn"
-              style={{ background: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.4)', color: '#34d399' }}
-              onClick={() => setIsAuthModalOpen(true)}
-            >
-              <User size={14} />
-              <span>เข้าสู่ระบบ / สมัครสมาชิก</span>
-            </button>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+              <button
+                className="nav-btn"
+                onClick={() => {
+                  setAuthInitialTab('register');
+                  setIsAuthModalOpen(true);
+                }}
+                style={{ borderColor: 'var(--border-medium)', color: 'var(--text-main)' }}
+              >
+                <span>สมัครสมาชิก</span>
+              </button>
+              <button
+                className="nav-btn nav-btn-primary"
+                onClick={() => {
+                  setAuthInitialTab('login');
+                  setIsAuthModalOpen(true);
+                }}
+              >
+                <User size={14} />
+                <span>เข้าสู่ระบบ</span>
+              </button>
+            </div>
           )}
         </div>
-
-        <h1 className="header-title">IT-to-Human Translator</h1>
-        <p className="header-subtitle">
-          Enterprise AI Platform: เชื่อมช่องว่างระหว่าง Non-Tech และ Tech ด้วย RAG Corporate Knowledge Base, PII Sanitizer Guardrails, และ Legacy Impact Analysis
-        </p>
       </header>
 
-      {/* Mode Switcher */}
-      <div className="mode-switcher-container">
-        <div className="mode-switcher">
+      {/* MODE SWITCHER (Segmented Bar) */}
+      <div className="mode-container">
+        <div className="mode-segmented-control">
           <button
-            className={`mode-btn ${mode === 'human-to-tech' ? 'active-h2t' : ''}`}
+            className={`mode-segment-btn ${mode === 'human-to-tech' ? 'active' : ''}`}
             onClick={() => handleSwitchMode('human-to-tech')}
           >
-            <UserCheck size={18} />
-            <span>[Human-to-Tech] แปลความต้องการลูกค้า</span>
+            <UserCheck size={16} />
+            <span>[Human-to-Tech] แปลความต้องการลูกค้า ➔ Technical Specs</span>
           </button>
           <button
-            className={`mode-btn ${mode === 'tech-to-human' ? 'active-t2h' : ''}`}
+            className={`mode-segment-btn ${mode === 'tech-to-human' ? 'active' : ''}`}
             onClick={() => handleSwitchMode('tech-to-human')}
           >
-            <Cpu size={18} />
-            <span>[Tech-to-Human] แปลศัพท์เทคนิคส่งลูกค้า</span>
+            <Cpu size={16} />
+            <span>[Tech-to-Human] แปลศัพท์เทคนิค ➔ ภาษาที่ลูกค้าเข้าใจ</span>
           </button>
         </div>
       </div>
 
-      {/* Main Grid */}
+      {/* 2-COLUMN MAIN WORKSPACE GRID */}
       <div className="main-grid">
-        {/* Left Column: Input Panel */}
-        <div className="glass-panel">
-          <div className="panel-title">
-            <div className="panel-title-left">
-              <MessageSquareText size={20} className="text-indigo-400" />
+        {/* LEFT COLUMN: Input & Settings Panel */}
+        <div className="white-panel">
+          <div className="panel-header">
+            <div className="panel-title">
+              <MessageSquareText size={18} color="var(--primary)" />
               <span>
-                {mode === 'human-to-tech'
-                  ? 'ข้อความจากลูกค้า (Non-Tech Input)'
-                  : 'ปัญหา/ศัพท์เทคนิคจากทีมเกอ (Tech Input)'}
+                {mode === 'human-to-tech' ? 'ข้อความจากลูกค้า (Client Input)' : 'ปัญหาหรือศัพท์เทคนิค (Technical Input)'}
               </span>
             </div>
             {inputText && (
               <button
-                className="btn-secondary"
-                style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
+                className="btn-tool"
                 onClick={() => {
                   setInputText('');
                   setTranslationResult(null);
                 }}
               >
-                <RotateCcw size={14} />
+                <RotateCcw size={13} />
                 <span>ล้างข้อมูล</span>
               </button>
             )}
           </div>
 
-          {/* Presets chips */}
-          <div className="preset-chip-list">
-            <span className="preset-chip-title">💡 ตัวอย่างเคสทดสอบ (Enterprise Context):</span>
-            {currentPresets.map((preset) => (
-              <div
-                key={preset.id}
-                className="preset-chip"
-                onClick={() => handleSelectPreset(preset)}
-              >
-                <span>{preset.title}</span>
-                <Zap size={14} opacity={0.6} />
-              </div>
-            ))}
+          {/* Quick Preset Scroller */}
+          <div style={{ marginBottom: '0.85rem' }}>
+            <span style={{ display: 'block', fontSize: '0.76rem', color: 'var(--text-muted)', marginBottom: '0.35rem', fontWeight: 600 }}>
+              💡 ตัวอย่างทดสอบด่วน:
+            </span>
+            <div className="preset-scroller">
+              {currentPresets.map((preset) => (
+                <button
+                  key={preset.id}
+                  className="preset-chip-btn"
+                  onClick={() => handleSelectPreset(preset)}
+                >
+                  <span>{preset.title}</span>
+                  <Zap size={12} color="var(--primary)" />
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Project Context Field */}
-          <div style={{ marginBottom: '0.8rem' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', color: '#94A3B8', marginBottom: '0.4rem', fontWeight: '500' }}>
-              🏢 Project Context / Corporate Tech Stack:
-            </label>
+          {/* Input Textarea */}
+          <div className="form-section">
+            <textarea
+              className="clean-textarea"
+              placeholder={
+                mode === 'human-to-tech'
+                  ? 'พิมพ์ความต้องการของลูกค้า เช่น "อยากได้ระบบแจ้งเตือนเข้า LINE เมื่อมีคนสั่งซื้อสินค้า และออกใบเสร็จรับเงินอัตโนมัติ"...'
+                  : 'พิมพ์ปัญหาทางเทคนิค เช่น "ตอนนี้ Redis cache miss บ่อยมาก และพบ Memory leak ใน container ทำให้ API ตอบสนองช้ากว่า 4 วินาที"...'
+              }
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+            />
+            <div className="textarea-info-bar">
+              <span style={{
+                color: (!isPro && inputText.length > FREE_TIER_MAX_CHARS) ? '#DC2626' : undefined,
+                fontWeight: (!isPro && inputText.length > FREE_TIER_MAX_CHARS) ? 700 : undefined
+              }}>
+                {inputText.length} {isPro ? 'ตัวอักษร (Pro ไม่จำกัด)' : `/ ${FREE_TIER_MAX_CHARS} ตัวอักษร (โหมดฟรี)`}
+              </span>
+              <span>{mode === 'human-to-tech' ? 'Non-Tech ➔ Tech Requirements' : 'Tech ➔ Friendly Explanation'}</span>
+            </div>
+          </div>
 
-            {/* Quick Tech Stack Selector Chips */}
-            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+          {/* Project Context & Constraints */}
+          <div className="context-panel">
+            <div className="form-label">
+              <span>🏢 บริบทและเทคโนโลยีเดิม (Tech Stack Context):</span>
+            </div>
+            <div className="pill-group">
               {TECH_STACK_PRESETS.map((tsPreset) => (
                 <button
                   key={tsPreset.id}
                   type="button"
-                  onClick={() => setProjectContext(tsPreset.context)}
-                  style={{
-                    background: projectContext === tsPreset.context ? 'rgba(99, 102, 241, 0.25)' : 'rgba(15, 23, 42, 0.6)',
-                    border: projectContext === tsPreset.context ? '1px solid #6366F1' : '1px solid rgba(255,255,255,0.1)',
-                    color: projectContext === tsPreset.context ? '#818CF8' : '#94A3B8',
-                    borderRadius: '6px',
-                    padding: '0.2rem 0.5rem',
-                    fontSize: '0.75rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
+                  className={`selectable-pill ${projectContext === tsPreset.context ? 'active' : ''}`}
+                  onClick={() => setProjectContext(projectContext === tsPreset.context ? '' : tsPreset.context)}
                 >
                   {tsPreset.label}
                 </button>
               ))}
             </div>
-
             <input
               type="text"
-              className="custom-textarea"
-              style={{ minHeight: '40px', padding: '0.5rem 0.8rem', height: '40px' }}
-              placeholder="เลือก Preset ด้านบน หรือพิมพ์ เช่น Python FastAPI + PostgreSQL..."
+              className="clean-input"
+              placeholder="หรือระบุเอง เช่น React + Python FastAPI, PostgreSQL..."
               value={projectContext}
               onChange={(e) => setProjectContext(e.target.value)}
             />
 
             {/* Budget & Timeline Selectors */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginTop: '0.6rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem', marginTop: '0.65rem' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', color: '#94A3B8', marginBottom: '0.2rem' }}>
-                  💰 ระดับงบประมาณ (Budget Level):
-                </label>
+                <span style={{ display: 'block', fontSize: '0.74rem', color: 'var(--text-muted)', marginBottom: '0.25rem', fontWeight: 600 }}>
+                  💰 ระดับงบประมาณ:
+                </span>
                 <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
                   {['งบประหยัด (Low)', 'งบปานกลาง (Medium)', 'องค์กร (Enterprise)'].map((lvl) => (
                     <button
                       key={lvl}
                       type="button"
+                      className={`selectable-pill ${budgetLevel === lvl ? 'active' : ''}`}
                       onClick={() => setBudgetLevel(budgetLevel === lvl ? '' : lvl)}
-                      style={{
-                        background: budgetLevel === lvl ? 'rgba(16, 185, 129, 0.25)' : 'rgba(15, 23, 42, 0.6)',
-                        border: budgetLevel === lvl ? '1px solid #10B981' : '1px solid rgba(255,255,255,0.08)',
-                        color: budgetLevel === lvl ? '#34D399' : '#94A3B8',
-                        borderRadius: '4px',
-                        padding: '0.15rem 0.4rem',
-                        fontSize: '0.7rem',
-                        cursor: 'pointer'
-                      }}
                     >
-                      {lvl}
+                      {lvl.split(' ')[0]}
                     </button>
                   ))}
                 </div>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', color: '#94A3B8', marginBottom: '0.2rem' }}>
-                  ⏱️ กรอบเวลา (Timeline Constraint):
-                </label>
+                <span style={{ display: 'block', fontSize: '0.74rem', color: 'var(--text-muted)', marginBottom: '0.25rem', fontWeight: 600 }}>
+                  ⏱️ กรอบเวลาทำงาน:
+                </span>
                 <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
-                  {['เร่งด่วน (< 1 สัปดาห์)', 'ปกติ (1 เดือน)', 'ระยะยาว (3+ เดือน)'].map((tml) => (
+                  {['เร่งด่วน (<1 สัปดาห์)', 'ปกติ (1 เดือน)', 'ระยะยาว (3+ เดือน)'].map((tml) => (
                     <button
                       key={tml}
                       type="button"
+                      className={`selectable-pill ${timelineConstraint === tml ? 'active' : ''}`}
                       onClick={() => setTimelineConstraint(timelineConstraint === tml ? '' : tml)}
-                      style={{
-                        background: timelineConstraint === tml ? 'rgba(245, 158, 11, 0.25)' : 'rgba(15, 23, 42, 0.6)',
-                        border: timelineConstraint === tml ? '1px solid #F59E0B' : '1px solid rgba(255,255,255,0.08)',
-                        color: timelineConstraint === tml ? '#FBBF24' : '#94A3B8',
-                        borderRadius: '4px',
-                        padding: '0.15rem 0.4rem',
-                        fontSize: '0.7rem',
-                        cursor: 'pointer'
-                      }}
                     >
-                      {tml}
+                      {tml.split(' ')[0]}
                     </button>
                   ))}
                 </div>
@@ -604,212 +674,113 @@ export default function App() {
             </div>
           </div>
 
-          {/* Phase 2: Enterprise Security Guardrails & RAG Switches */}
-          <div style={{
-            backgroundColor: 'rgba(15, 23, 42, 0.5)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            borderRadius: '10px',
-            padding: '0.65rem 0.85rem',
-            marginBottom: '0.8rem',
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '0.5rem'
-          }}>
-            {/* RAG Knowledge Switch */}
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.78rem', color: '#c7d2fe' }}>
+          {/* Security & RAG Controls Bar */}
+          <div className="security-bar">
+            <label className="checkbox-label" title="ดึงข้อมูลจากเอกสารใน Knowledge Base เพื่อใช้เป็นบริบทอ้างอิง">
               <input
                 type="checkbox"
                 checked={useRag}
                 onChange={(e) => setUseRag(e.target.checked)}
-                style={{ accentColor: '#6366f1' }}
               />
-              <Database size={14} color="#818cf8" />
-              <span>ดึงบริบทจาก Knowledge Base (RAG)</span>
+              <Database size={14} color="var(--primary)" />
+              <span>ดึงความรู้ RAG</span>
             </label>
 
-            {/* PII Sanitizer Switch */}
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.78rem', color: '#34d399' }}>
+            <label className="checkbox-label" title="เซนเซอร์ข้อมูลสำคัญ เช่น อีเมล, เลขบัตร, รหัสผ่าน ก่อนส่งประมวลผล">
               <input
                 type="checkbox"
                 checked={sanitizePii}
                 onChange={(e) => setSanitizePii(e.target.checked)}
-                style={{ accentColor: '#10b981' }}
               />
-              <ShieldCheck size={14} color="#34d399" />
-              <span>Mask ข้อมูลสำคัญ (PII / API Key)</span>
+              <ShieldCheck size={14} color="var(--accent-emerald)" />
+              <span>Mask ข้อมูลส่วนบุคคล (PII)</span>
             </label>
 
-            {/* Security Mode Selector */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', color: '#94a3b8' }}>
-              <button
-                type="button"
-                onClick={() => setSecurityMode(securityMode === 'cloud' ? 'private-local' : 'cloud')}
-                style={{
-                  backgroundColor: securityMode === 'cloud' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(168, 85, 247, 0.2)',
-                  color: securityMode === 'cloud' ? '#60a5fa' : '#c084fc',
-                  border: `1px solid ${securityMode === 'cloud' ? 'rgba(59, 130, 246, 0.4)' : 'rgba(168, 85, 247, 0.4)'}`,
-                  borderRadius: '4px',
-                  padding: '2px 8px',
-                  fontSize: '0.72rem',
-                  cursor: 'pointer'
-                }}
-              >
-                {securityMode === 'cloud' ? '☁️ Cloud AI Mode' : '🔒 On-Premise / Private Mode'}
-              </button>
-            </div>
-          </div>
-
-          {/* Text Area */}
-          <div className="input-textarea-wrapper">
-            <textarea
-              className="custom-textarea"
-              placeholder={
-                mode === 'human-to-tech'
-                  ? 'พิมพ์ความต้องการของลูกค้า เช่น "อยากได้ระบบตัดเงินผ่าน PromptPay และยิงแจ้งเตือนเข้า LINE เมื่อมีคนสั่งซื้อ"...'
-                  : 'พิมพ์ปัญหา หรือศัพท์เทคนิคโปรแกรมเมอร์ เช่น "ตอนนี้เจอ CORS error บน staging และ N+1 query ทำให้ API ช้ากว่า 5 วินาที"...'
-              }
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-            />
-            <div className="textarea-footer">
-              <span>{inputText.length} ตัวอักษร</span>
-              <span>{mode === 'human-to-tech' ? 'ภาษาคนทั่วไป ➔ Technical Requirement' : 'ภาษาเทคนิค ➔ สุภาพ & อุปมาอุปไมย'}</span>
-            </div>
-          </div>
-
-          {/* Quota Lockout Notice if exhausted */}
-          {quotaStatus && !quotaStatus.allowed && (
-            <div style={{
-              background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(15, 23, 42, 0.8) 100%)',
-              border: '1px solid rgba(239, 68, 68, 0.35)',
-              borderRadius: '10px',
-              padding: '0.85rem 1rem',
-              marginBottom: '1rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: '0.6rem'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <Clock size={18} color="#ef4444" />
-                <div style={{ fontSize: '0.84rem', color: '#fecaca' }}>
-                  <strong>โควต้าฟรีของคุณหมดแล้ว:</strong> ใช้งานได้อีกทีในอีก <strong>{quotaStatus.formatted_wait_time || 'สักครู่'}</strong>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsSubscriptionOpen(true)}
-                style={{
-                  background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-                  border: 'none',
-                  color: '#fff',
-                  borderRadius: '6px',
-                  padding: '4px 10px',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                <Sparkles size={13} />
-                <span>สมัคร Pro ใช้ต่อทันที</span>
-              </button>
-            </div>
-          )}
-
-          {/* Action Bar */}
-          <div className="action-bar">
-            <button className="btn-primary" onClick={handleTranslate} disabled={isLoading}>
-              {isLoading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRightLeft size={18} />}
-              <span>{isLoading ? 'กำลังประมวลผลด้วย FastAPI & RAG Engine...' : 'เริ่มแปลภาษาตามโหมด'}</span>
+            <button
+              type="button"
+              className="btn-tool"
+              onClick={() => setSecurityMode(securityMode === 'cloud' ? 'private-local' : 'cloud')}
+              style={{ fontSize: '0.74rem' }}
+            >
+              {securityMode === 'cloud' ? '☁️ Cloud AI' : '🔒 On-Premise'}
             </button>
           </div>
+
+          {/* Main Action Button */}
+          <button 
+            className="btn-primary-action" 
+            onClick={handleTranslate} 
+            disabled={isLoading || !inputText.trim()}
+          >
+            {isLoading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRightLeft size={18} />}
+            <span>{isLoading ? 'กำลังประมวลผลการแปล...' : 'เริ่มแปลภาษา'}</span>
+          </button>
         </div>
 
-
-        {/* Right Column: Output Result Panel */}
-        <div className="glass-panel">
-          <div className="panel-title">
-            <div className="panel-title-left">
-              <Sparkles size={20} className="text-purple-400" />
-              <span>ผลลัพธ์การแปล (Enterprise JSON Output)</span>
-              {translationResult?.isAi && (
-                <span className="ai-badge">
-                  <Bot size={12} />
-                  <span>Gemini AI + RAG</span>
-                </span>
-              )}
+        {/* RIGHT COLUMN: Output Result Panel */}
+        <div className="white-panel">
+          <div className="panel-header">
+            <div className="panel-title">
+              <Sparkles size={18} color="var(--primary)" />
+              <span>ผลลัพธ์การแปลภาษา</span>
             </div>
+
+            {/* Export Toolbar */}
             {translationResult && (
-              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                {translationResult.mode === 'human-to-tech' && (
-                  <button className="btn-secondary" onClick={handleExportOpenAPI} title="Download OpenAPI 3.0 JSON Spec" style={{ background: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.4)', color: '#34D399', padding: '0.35rem 0.6rem', fontSize: '0.8rem' }}>
-                    <Server size={14} />
-                    <span>OpenAPI JSON</span>
-                  </button>
-                )}
-                {translationResult.mode === 'tech-to-human' && (
-                  <button className="btn-secondary" onClick={handleExportClientEmail} title="Copy Official Client Email Draft" style={{ background: 'rgba(236, 72, 153, 0.15)', borderColor: 'rgba(236, 72, 153, 0.4)', color: '#F472B6', padding: '0.35rem 0.6rem', fontSize: '0.8rem' }}>
-                    <Mail size={14} />
-                    <span>Email Draft</span>
-                  </button>
-                )}
-                <button
-                  className="btn-secondary"
-                  onClick={() => setIsTelegramModalOpen(true)}
-                  title="ส่งโครงสร้างข้อมูลเข้า Telegram"
-                  style={{
-                    background: 'rgba(14, 165, 233, 0.18)',
-                    borderColor: 'rgba(14, 165, 233, 0.45)',
-                    color: '#38BDF8',
-                    padding: '0.35rem 0.65rem',
-                    fontSize: '0.8rem',
-                    fontWeight: 500
-                  }}
-                >
-                  <Send size={14} />
-                  <span>Telegram</span>
+              <div className="export-toolbar">
+                <button className="btn-tool" onClick={handleCopyOutput} title="คัดลอกข้อความสรุป">
+                  {copied ? <Check size={13} color="var(--accent-emerald)" /> : <Copy size={13} />}
+                  <span>{copied ? 'คัดลอกแล้ว' : 'คัดลอก'}</span>
                 </button>
-                <button className="btn-secondary" onClick={handleExportMarkdown} title="Export to Markdown (.md)" style={{ padding: '0.35rem 0.6rem', fontSize: '0.8rem' }}>
-                  <FileText size={14} className="text-indigo-400" />
+                <button className="btn-tool" onClick={handleExportMarkdown} title="ดาวน์โหลดไฟล์ .md">
+                  <FileText size={13} />
                   <span>Markdown</span>
                 </button>
-                <button className="btn-secondary" onClick={handleExportPDF} title="Export / Print to PDF" style={{ padding: '0.35rem 0.6rem', fontSize: '0.8rem' }}>
-                  <Printer size={14} className="text-emerald-400" />
+                <button className="btn-tool" onClick={handleExportPDF} title="พิมพ์ / บันทึก PDF">
+                  <Printer size={13} />
                   <span>PDF</span>
                 </button>
-                <button className="btn-secondary" onClick={handleExportJira} title="Copy as Jira Markup" style={{ background: 'rgba(59, 130, 246, 0.15)', borderColor: 'rgba(59, 130, 246, 0.4)', color: '#60A5FA', padding: '0.35rem 0.6rem', fontSize: '0.8rem' }}>
-                  <FileCode2 size={14} />
-                  <span>Jira</span>
-                </button>
-                <button className="btn-secondary" onClick={handleCopyOutput} title="คัดลอกข้อความธรรมดา" style={{ padding: '0.35rem 0.6rem', fontSize: '0.8rem' }}>
-                  {copied ? <Check size={14} color="#10B981" /> : <Copy size={14} />}
-                  <span>{copied ? 'คัดลอกแล้ว' : 'คัดลอก'}</span>
+                {translationResult.mode === 'human-to-tech' && (
+                  <>
+                    <button className="btn-tool" onClick={handleExportJira} title="คัดลอก Jira Format">
+                      <FileCode2 size={13} />
+                      <span>Jira</span>
+                    </button>
+                    <button className="btn-tool" onClick={handleExportOpenAPI} title="ดาวน์โหลด OpenAPI JSON">
+                      <span>OpenAPI</span>
+                    </button>
+                  </>
+                )}
+                {translationResult.mode === 'tech-to-human' && (
+                  <button className="btn-tool" onClick={handleExportClientEmail} title="คัดลอกร่างอีเมลส่งลูกค้า">
+                    <Mail size={13} />
+                    <span>อีเมล</span>
+                  </button>
+                )}
+                <button className="btn-tool" onClick={() => setIsTelegramModalOpen(true)} title="ส่งข้อมูลเข้า Telegram">
+                  <Send size={13} />
+                  <span>Telegram</span>
                 </button>
               </div>
             )}
           </div>
 
+          {/* Results Area */}
           {isLoading ? (
-            <div className="output-empty">
-              <Loader2 className="empty-icon animate-spin text-indigo-400" />
-              <h3 style={{ color: '#A5B4FC' }}>FastAPI Backend กำลังประมวลผล...</h3>
-              <p>ระบบกำลังเรียกใช้ RAG Ingestion, PII Sanitizer และ Gemini AI Engine</p>
+            <div className="output-empty-state">
+              <Loader2 className="output-empty-icon animate-spin" color="var(--primary)" />
+              <h4 style={{ color: 'var(--text-main)', marginBottom: '0.4rem', fontWeight: 600 }}>กำลังประมวลผล...</h4>
+              <p style={{ fontSize: '0.85rem' }}>ระบบกำลังวิเคราะห์ความต้องการ ดึงเอกสาร RAG และสร้างผลลัพธ์มาตรฐาน</p>
             </div>
           ) : !translationResult ? (
-            <div className="output-empty">
-              <Layers className="empty-icon" />
-              <h3>ยังไม่มีข้อความแปล</h3>
-              <p>เลือกตัวอย่างเคสด้านซ้าย หรือพิมพ์ข้อความแล้วกด "เริ่มแปลภาษา" ได้เลย</p>
+            <div className="output-empty-state">
+              <Layers className="output-empty-icon" />
+              <h4 style={{ color: 'var(--text-main)', marginBottom: '0.4rem', fontWeight: 600 }}>ยังไม่มีผลลัพธ์การแปล</h4>
+              <p style={{ fontSize: '0.85rem' }}>เลือกตัวอย่างทดสอบด่วนทางซ้าย หรือพิมพ์ข้อความแล้วกด "เริ่มแปลภาษา"</p>
             </div>
           ) : (
             <div>
-              {/* Phase 2: Corporate Legacy Impact Analysis & RAG Context Card */}
+              {/* Impact Analysis & RAG Context (Human-to-Tech Mode) */}
               {translationResult.mode === 'human-to-tech' && (
                 <ImpactAnalysisCard
                   impactAnalysis={translationResult.data?.impactAnalysis}
@@ -818,121 +789,78 @@ export default function App() {
                 />
               )}
 
-              {/* Mode 1: Human-to-Tech View */}
+              {/* MODE 1: Human-to-Tech Output */}
               {translationResult.mode === 'human-to-tech' && (
                 <div>
                   {/* Summary */}
-                  <div className="section-card">
-                    <div className="section-title">📌 สรุปเป้าหมายหลัก</div>
-                    <p style={{ color: '#F8FAFC', fontSize: '0.95rem' }}>
-                      {translationResult.data.summary}
-                    </p>
+                  <div className="result-section">
+                    <div className="result-section-title">📌 สรุปเป้าหมายหลัก (Executive Summary)</div>
+                    <p className="result-body-text">{translationResult.data.summary}</p>
                   </div>
 
                   {/* Technical Requirements */}
-                  <div className="section-card">
-                    <div className="section-title">⚙️ ข้อกำหนดทางเทคนิค (Technical Requirements)</div>
-                    <ul className="bullet-list">
+                  <div className="result-section">
+                    <div className="result-section-title">⚙️ ข้อกำหนดทางเทคนิค (Technical Requirements)</div>
+                    <ul className="clean-bullet-list">
                       {translationResult.data.technicalRequirements?.map((req, idx) => (
-                        <li key={idx} className="bullet-item">{req}</li>
+                        <li key={idx} className="clean-bullet-item">{req}</li>
                       ))}
                     </ul>
                   </div>
 
-                  {/* Tech Stack */}
-                  <div className="section-card">
-                    <div className="section-title">🛠️ แนะนำเครื่องมือ & Tech Stack เบื้องต้น</div>
-                    <div className="tech-stack-grid">
+                  {/* Recommended Tech Stack */}
+                  <div className="result-section">
+                    <div className="result-section-title">🛠️ แนะนำ Tech Stack & สถาปัตยกรรม</div>
+                    <div className="tech-grid">
                       {translationResult.data.techStack?.map((ts, idx) => (
-                        <div key={idx} className="tech-badge-card">
-                          <div className="tech-name">{ts.name}</div>
-                          <div className="tech-desc">{ts.desc}</div>
+                        <div key={idx} className="tech-item-card">
+                          <div className="tech-item-name">{ts.name}</div>
+                          <div className="tech-item-desc">{ts.desc}</div>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Risk Analysis */}
-                  {translationResult.data.riskAnalysis && translationResult.data.riskAnalysis.length > 0 && (
-                    <div className="section-card" style={{ borderColor: 'rgba(245, 158, 11, 0.3)', background: 'rgba(245, 158, 11, 0.05)' }}>
-                      <div className="section-title" style={{ color: '#FBBF24' }}>
-                        <AlertTriangle size={16} />
-                        <span>ข้อควรระวัง & ความเสี่ยงในโปรเจกต์</span>
-                      </div>
-                      <ul className="bullet-list">
-                        {translationResult.data.riskAnalysis.map((r, idx) => (
-                          <li key={idx} className="bullet-item" style={{ color: '#FEF3C7' }}>{r}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
                   {/* Effort & Cost Estimation */}
                   {translationResult.data.effortEstimation && (
-                    <div className="section-card" style={{ borderColor: 'rgba(16, 185, 129, 0.3)', background: 'rgba(16, 185, 129, 0.05)' }}>
-                      <div className="section-title" style={{ color: '#34D399' }}>
-                        <Clock size={16} />
-                        <span>การประเมินระยะเวลาและงบประมาณ (AI Effort & Cost Estimator)</span>
+                    <div className="result-section">
+                      <div className="result-section-title">
+                        <Clock size={15} color="var(--accent-emerald)" />
+                        <span>การประเมินระยะเวลาและงบประมาณ (Effort & Cost Estimation)</span>
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.8rem', marginTop: '0.5rem' }}>
-                        <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '0.6rem 0.8rem', borderRadius: '8px' }}>
-                          <div style={{ fontSize: '0.75rem', color: '#94A3B8' }}>ความซับซ้อน (Complexity)</div>
-                          <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#60A5FA' }}>{translationResult.data.effortEstimation.complexity}</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.6rem', marginTop: '0.4rem' }}>
+                        <div style={{ background: 'var(--bg-surface)', padding: '0.6rem', borderRadius: '7px', border: '1px solid var(--border-light)' }}>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>ความซับซ้อน:</span>
+                          <div style={{ fontWeight: 600, color: 'var(--primary)', fontSize: '0.9rem' }}>
+                            {translationResult.data.effortEstimation.complexity}
+                          </div>
                         </div>
-                        <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '0.6rem 0.8rem', borderRadius: '8px' }}>
-                          <div style={{ fontSize: '0.75rem', color: '#94A3B8' }}>ระยะเวลาทำงาน (Man-Days)</div>
-                          <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#FBBF24' }}>{translationResult.data.effortEstimation.estimatedManDays}</div>
+                        <div style={{ background: 'var(--bg-surface)', padding: '0.6rem', borderRadius: '7px', border: '1px solid var(--border-light)' }}>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>ระยะเวลา (Man-Days):</span>
+                          <div style={{ fontWeight: 600, color: 'var(--accent-amber)', fontSize: '0.9rem' }}>
+                            {translationResult.data.effortEstimation.estimatedManDays}
+                          </div>
                         </div>
-                        <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '0.6rem 0.8rem', borderRadius: '8px' }}>
-                          <div style={{ fontSize: '0.75rem', color: '#94A3B8' }}>ประเมินงบประมาณ</div>
-                          <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#34D399' }}>{translationResult.data.effortEstimation.estimatedCostRange}</div>
+                        <div style={{ background: 'var(--bg-surface)', padding: '0.6rem', borderRadius: '7px', border: '1px solid var(--border-light)' }}>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>งบประมาณโดยประมาณ:</span>
+                          <div style={{ fontWeight: 600, color: 'var(--accent-emerald)', fontSize: '0.9rem' }}>
+                            {translationResult.data.effortEstimation.estimatedCostRange}
+                          </div>
                         </div>
                       </div>
-                      {translationResult.data.effortEstimation.reasoning && (
-                        <p style={{ color: '#94A3B8', fontSize: '0.82rem', marginTop: '0.6rem' }}>
-                          💡 <em>เหตุผลประเมิน: {translationResult.data.effortEstimation.reasoning}</em>
-                        </p>
-                      )}
                     </div>
                   )}
 
-                  {/* Acceptance Criteria */}
-                  {translationResult.data.acceptanceCriteria && translationResult.data.acceptanceCriteria.length > 0 && (
-                    <div className="section-card" style={{ borderColor: 'rgba(16, 185, 129, 0.3)', background: 'rgba(16, 185, 129, 0.04)' }}>
-                      <div className="section-title" style={{ color: '#34D399' }}>
-                        <span>📋 เงื่อนไขการตรวจรับงาน (Acceptance Criteria)</span>
+                  {/* Risk Analysis */}
+                  {translationResult.data.riskAnalysis && translationResult.data.riskAnalysis.length > 0 && (
+                    <div className="result-section" style={{ borderColor: '#FDE68A', background: '#FFFDF5' }}>
+                      <div className="result-section-title" style={{ color: '#B45309' }}>
+                        <AlertTriangle size={15} color="#D97706" />
+                        <span>ข้อควรระวัง & ความเสี่ยงในโครงการ</span>
                       </div>
-                      <ul className="bullet-list">
-                        {translationResult.data.acceptanceCriteria.map((ac, idx) => (
-                          <li key={idx} className="bullet-item" style={{ color: '#E2E8F0' }}>{ac}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {/* Non-Functional Requirements */}
-                  {translationResult.data.nonFunctionalRequirements && translationResult.data.nonFunctionalRequirements.length > 0 && (
-                    <div className="section-card" style={{ borderColor: 'rgba(168, 85, 247, 0.3)', background: 'rgba(168, 85, 247, 0.04)' }}>
-                      <div className="section-title" style={{ color: '#C084FC' }}>
-                        <span>🛡️ ข้อกำหนดด้านประสิทธิภาพและความปลอดภัย (Non-Functional Requirements)</span>
-                      </div>
-                      <ul className="bullet-list">
-                        {translationResult.data.nonFunctionalRequirements.map((nfr, idx) => (
-                          <li key={idx} className="bullet-item" style={{ color: '#F3E8FF' }}>{nfr}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {/* API Draft Payload */}
-                  {translationResult.data.apiDraft && translationResult.data.apiDraft.length > 0 && (
-                    <div className="section-card" style={{ borderColor: 'rgba(56, 189, 248, 0.3)', background: 'rgba(15, 23, 42, 0.6)' }}>
-                      <div className="section-title" style={{ color: '#38BDF8' }}>
-                        <span>🔌 ร่างโครงสร้าง API & Data Payloads (API Specification Draft)</span>
-                      </div>
-                      <ul className="bullet-list">
-                        {translationResult.data.apiDraft.map((api, idx) => (
-                          <li key={idx} className="bullet-item" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#7DD3FC' }}>{api}</li>
+                      <ul className="clean-bullet-list">
+                        {translationResult.data.riskAnalysis.map((r, idx) => (
+                          <li key={idx} className="clean-bullet-item">{r}</li>
                         ))}
                       </ul>
                     </div>
@@ -940,14 +868,14 @@ export default function App() {
 
                   {/* Suggested Questions */}
                   {translationResult.data.suggestedQuestions && translationResult.data.suggestedQuestions.length > 0 && (
-                    <div className="section-card" style={{ borderColor: 'rgba(14, 165, 233, 0.3)', background: 'rgba(14, 165, 233, 0.05)' }}>
-                      <div className="section-title" style={{ color: '#38BDF8' }}>
-                        <HelpCircle size={16} />
-                        <span>คำถามสำคัญที่ควรสอบถามลูกค้าเพิ่มเติม</span>
+                    <div className="result-section">
+                      <div className="result-section-title">
+                        <HelpCircle size={15} color="var(--primary)" />
+                        <span>คำถามที่ควรถามลูกค้าเพิ่มเติม</span>
                       </div>
-                      <ul className="bullet-list">
+                      <ul className="clean-bullet-list">
                         {translationResult.data.suggestedQuestions.map((q, idx) => (
-                          <li key={idx} className="bullet-item" style={{ color: '#E0F2FE' }}>{q}</li>
+                          <li key={idx} className="clean-bullet-item">{q}</li>
                         ))}
                       </ul>
                     </div>
@@ -955,68 +883,66 @@ export default function App() {
                 </div>
               )}
 
-              {/* Mode 2: Tech-to-Human View */}
+              {/* MODE 2: Tech-to-Human Output */}
               {translationResult.mode === 'tech-to-human' && (
                 <div>
                   {/* Polite Explanation Box */}
-                  <div className="polite-text-box" style={{ position: 'relative' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#34D399', fontWeight: '600' }}>
+                  <div className="polite-box">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}>
                         <MessageSquareText size={16} />
-                        <span>ข้อความสุภาพพร้อมส่งให้ลูกค้าอ่าน:</span>
+                        <span>ข้อความสุภาพพร้อมส่งให้ลูกค้า:</span>
                       </div>
                       <button
-                        className="btn-secondary"
+                        className="btn-tool"
                         onClick={handleExportClientEmail}
-                        style={{
-                          background: 'rgba(236, 72, 153, 0.2)',
-                          borderColor: 'rgba(236, 72, 153, 0.5)',
-                          color: '#F472B6',
-                          padding: '0.25rem 0.6rem',
-                          fontSize: '0.75rem',
-                          borderRadius: '6px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.3rem'
-                        }}
+                        style={{ background: '#FFFFFF', borderColor: '#86EFAC', color: '#166534' }}
                       >
-                        <Mail size={13} />
-                        <span>คัดลอกร่างอีเมล (Client Email Draft)</span>
+                        <Mail size={12} />
+                        <span>คัดลอกร่างอีเมล</span>
                       </button>
                     </div>
                     {translationResult.data.politeExplanation}
                   </div>
 
-                  {/* Analogy Banner */}
+                  {/* Analogy Card */}
                   {translationResult.data.analogy && (
-                    <div className="analogy-banner">
-                      <div className="analogy-header">
-                        <span className="analogy-icon">{translationResult.data.analogy.icon || '💡'}</span>
-                        <span className="analogy-title">{translationResult.data.analogy.title}</span>
+                    <div className="analogy-card">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                        <span style={{ fontSize: '1.4rem' }}>{translationResult.data.analogy.icon || '💡'}</span>
+                        <strong style={{ color: 'var(--primary)', fontSize: '1rem' }}>
+                          {translationResult.data.analogy.title}
+                        </strong>
                       </div>
-                      <div className="analogy-body">
+                      <p style={{ fontSize: '0.9rem', color: 'var(--text-body)', lineHeight: 1.6 }}>
                         {translationResult.data.analogy.description}
-                      </div>
+                      </p>
                     </div>
                   )}
 
-                  {/* Impact */}
-                  <div className="section-card">
-                    <div className="section-title">📌 ผลกระทบต่อผู้ใช้งาน (User Impact)</div>
-                    <p style={{ color: '#F8FAFC', fontSize: '0.95rem' }}>
-                      {translationResult.data.impact}
-                    </p>
+                  {/* User Impact */}
+                  <div className="result-section">
+                    <div className="result-section-title">📌 ผลกระทบต่อผู้ใช้งาน (User Impact)</div>
+                    <p className="result-body-text">{translationResult.data.impact}</p>
                   </div>
 
-                  {/* Estimated Time Badge */}
-                  <div className="section-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div className="section-title" style={{ margin: 0, color: '#FCD34D' }}>
-                      <Clock size={16} />
+                  {/* Estimated Time */}
+                  <div className="result-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div className="result-section-title" style={{ margin: 0 }}>
+                      <Clock size={15} color="var(--accent-amber)" />
                       <span>ระยะเวลาแก้ไขโดยประมาณ</span>
                     </div>
-                    <div className="time-badge">
+                    <span style={{
+                      background: 'var(--bg-accent-soft)',
+                      color: 'var(--primary)',
+                      border: '1px solid var(--border-light)',
+                      borderRadius: '6px',
+                      padding: '4px 10px',
+                      fontWeight: 600,
+                      fontSize: '0.85rem'
+                    }}>
                       {translationResult.data.estimatedTime}
-                    </div>
+                    </span>
                   </div>
                 </div>
               )}
@@ -1028,7 +954,7 @@ export default function App() {
       {/* Toast Notification */}
       {toastMessage && (
         <div className="toast">
-          <Check size={18} />
+          <Check size={16} color="var(--accent-emerald)" />
           <span>{toastMessage}</span>
         </div>
       )}

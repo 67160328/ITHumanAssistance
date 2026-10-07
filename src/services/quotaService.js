@@ -61,26 +61,9 @@ export function formatWaitTime(seconds) {
  * Check quota status from FastAPI Backend or Local Storage
  */
 export async function getQuotaStatus(username = null) {
-  const baseUrl = getBackendBaseUrl();
   const localTier = isProUser(username) ? 'pro' : 'free';
 
-  // 1. Try FastAPI Backend
-  if (baseUrl && username) {
-    try {
-      const res = await fetch(`${baseUrl}/api/user/quota?username=${encodeURIComponent(username)}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.tier === 'pro') {
-          setLocalTier('pro');
-        }
-        return data;
-      }
-    } catch (e) {
-      console.info('Backend quota fetch fallback to local:', e.message);
-    }
-  }
-
-  // 2. Local Fallback Evaluation
+  // 1. If user explicitly toggled localTier, honor localTier
   if (localTier === 'pro') {
     return {
       allowed: true,
@@ -91,6 +74,28 @@ export async function getQuotaStatus(username = null) {
       remaining_seconds: 0,
       formatted_wait_time: '0 นาที'
     };
+  }
+
+  // 2. If user is free tier locally, try checking usage from local or backend
+  const baseUrl = getBackendBaseUrl();
+  if (baseUrl && username) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1200);
+      const res = await fetch(`${baseUrl}/api/user/quota?username=${encodeURIComponent(username)}`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const data = await res.json();
+        // If local user is set to free, keep tier as free
+        return {
+          ...data,
+          tier: 'free',
+          allowed: (data.quota_used || 0) < DEFAULT_FREE_LIMIT
+        };
+      }
+    } catch (e) {
+      // fallback
+    }
   }
 
   const local = getLocalData();
