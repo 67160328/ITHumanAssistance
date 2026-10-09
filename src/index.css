@@ -120,11 +120,12 @@ body {
   background: var(--text-dim);
 }
 
-/* Main Layout Wrapper */
+/* Main Layout Wrapper - Fullscreen Wide Viewport */
 .app-container {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 1.25rem 1.5rem 4rem 1.5rem;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 1rem 1.5rem 3rem 1.5rem;
 }
 
 /* ==========================================================================
