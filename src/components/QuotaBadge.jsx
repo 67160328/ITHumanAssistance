@@ -1,7 +1,7 @@
 import React from 'react';
 import { Crown, Sparkles, Clock, Zap } from 'lucide-react';
 
-export default function QuotaBadge({ quotaStatus, onOpenSubscription }) {
+export default function QuotaBadge({ quotaStatus, onOpenSubscription, onOpenTelegram }) {
   if (!quotaStatus) return null;
 
   const isPro = quotaStatus.tier === 'pro';
@@ -66,6 +66,30 @@ export default function QuotaBadge({ quotaStatus, onOpenSubscription }) {
           </>
         )}
       </div>
+
+      {isExhausted && onOpenTelegram && (
+        <button
+          type="button"
+          onClick={onOpenTelegram}
+          title="รับการแจ้งเตือนทาง Telegram เมื่อโควต้ารีเซ็ตพร้อมใช้งาน"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.3rem',
+            background: '#F0F9FF',
+            border: '1px solid #BAE6FD',
+            color: '#0284C7',
+            padding: '3px 8px',
+            borderRadius: '6px',
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            fontFamily: 'var(--font-thai)',
+            cursor: 'pointer'
+          }}
+        >
+          <span>📲 แจ้งเตือน Telegram</span>
+        </button>
+      )}
 
       <button
         type="button"

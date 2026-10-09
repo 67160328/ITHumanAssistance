@@ -20,7 +20,8 @@ export default function SubscriptionModal({
   onClose, 
   currentUser, 
   remainingTimeText = null,
-  onUpgradeSuccess 
+  onUpgradeSuccess,
+  onOpenTelegram
 }) {
   const [selectedPlan, setSelectedPlan] = useState('pro_monthly'); // 'pro_monthly' | 'pro_annual'
   const [paymentStep, setPaymentStep] = useState('select'); // 'select' | 'payment' | 'success'
@@ -88,22 +89,44 @@ export default function SubscriptionModal({
                 ปลดล็อกการใช้งานไม่จำกัดด้วย Pro Plan
               </h2>
               {remainingTimeText ? (
-                <div style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.4rem',
-                  backgroundColor: '#FEF2F2',
-                  border: '1px solid #FECACA',
-                  color: '#DC2626',
-                  padding: '4px 12px',
-                  borderRadius: '20px',
-                  fontSize: '0.82rem',
-                  fontWeight: 600,
-                  marginTop: '0.3rem',
-                  fontFamily: 'var(--font-thai)'
-                }}>
-                  <Clock size={14} />
-                  <span>โควต้าฟรีหมดแล้ว: ใช้งานได้อีกทีในอีก {remainingTimeText}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', marginTop: '0.3rem' }}>
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    backgroundColor: '#FEF2F2',
+                    border: '1px solid #FECACA',
+                    color: '#DC2626',
+                    padding: '4px 12px',
+                    borderRadius: '20px',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    fontFamily: 'var(--font-thai)'
+                  }}>
+                    <Clock size={14} />
+                    <span>โควต้าฟรีหมดแล้ว: ใช้งานได้อีกทีในอีก {remainingTimeText}</span>
+                  </div>
+                  {onOpenTelegram && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onOpenTelegram();
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#0284C7',
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                        fontFamily: 'var(--font-thai)'
+                      }}
+                    >
+                      📲 ผูก Telegram เพื่อรับข้อความแจ้งเตือนทันทีเมื่อโควต้ากลับมาใช้งานได้
+                    </button>
+                  )}
                 </div>
               ) : (
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', fontFamily: 'var(--font-thai)' }}>

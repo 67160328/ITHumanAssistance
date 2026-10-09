@@ -186,6 +186,8 @@ def migrate_users_quota_columns():
         cursor.execute("ALTER TABLE users ADD COLUMN quota_used INTEGER DEFAULT 0")
     if "quota_reset_at" not in cols:
         cursor.execute("ALTER TABLE users ADD COLUMN quota_reset_at TEXT")
+    if "quota_notified" not in cols:
+        cursor.execute("ALTER TABLE users ADD COLUMN quota_notified INTEGER DEFAULT 0")
 
     conn.commit()
     conn.close()
@@ -213,7 +215,7 @@ def check_user_quota(username: Optional[str]) -> Dict[str, Any]:
 
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT tier, quota_used, quota_reset_at FROM users WHERE username = ?", (username,))
+    cursor.execute("SELECT tier, quota_used, quota_reset_at, quota_notified FROM users WHERE username = ?", (username,))
     user = cursor.fetchone()
     conn.close()
 
@@ -224,7 +226,8 @@ def check_user_quota(username: Optional[str]) -> Dict[str, Any]:
             "quota_used": 0,
             "quota_limit": FREE_QUOTA_LIMIT,
             "quota_reset_at": None,
-            "remaining_seconds": 0
+            "remaining_seconds": 0,
+            "just_restored": False
         }
 
     tier = user["tier"] or "free"
@@ -236,23 +239,32 @@ def check_user_quota(username: Optional[str]) -> Dict[str, Any]:
             "quota_used": user["quota_used"] or 0,
             "quota_limit": -1,  # unlimited
             "quota_reset_at": None,
-            "remaining_seconds": 0
+            "remaining_seconds": 0,
+            "just_restored": False
         }
 
     quota_used = user["quota_used"] or 0
     quota_reset_at_str = user["quota_reset_at"]
+    quota_notified = user["quota_notified"] or 0
     remaining_seconds = 0
+    just_restored = False
 
     if quota_reset_at_str:
         try:
             reset_time = datetime.datetime.fromisoformat(quota_reset_at_str)
             if now >= reset_time:
                 # รีเซ็ตโควต้ารอบใหม่
+                was_exhausted = quota_used >= FREE_QUOTA_LIMIT
                 quota_used = 0
                 quota_reset_at_str = None
                 conn = get_db_connection()
                 c = conn.cursor()
-                c.execute("UPDATE users SET quota_used = 0, quota_reset_at = NULL WHERE username = ?", (username,))
+                # ถ้าเคยใช้โควต้าหมดและยังไม่ได้ส่งแจ้งเตือน ให้ flag ว่าเพิ่งฟื้นฟู
+                if was_exhausted and not quota_notified:
+                    just_restored = True
+                    c.execute("UPDATE users SET quota_used = 0, quota_reset_at = NULL, quota_notified = 1 WHERE username = ?", (username,))
+                else:
+                    c.execute("UPDATE users SET quota_used = 0, quota_reset_at = NULL WHERE username = ?", (username,))
                 conn.commit()
                 conn.close()
             else:
@@ -268,7 +280,8 @@ def check_user_quota(username: Optional[str]) -> Dict[str, Any]:
         "quota_used": quota_used,
         "quota_limit": FREE_QUOTA_LIMIT,
         "quota_reset_at": quota_reset_at_str,
-        "remaining_seconds": remaining_seconds
+        "remaining_seconds": remaining_seconds,
+        "just_restored": just_restored
     }
 
 def consume_user_quota(username: Optional[str]) -> Dict[str, Any]:
@@ -309,6 +322,13 @@ def consume_user_quota(username: Optional[str]) -> Dict[str, Any]:
             "UPDATE users SET quota_used = COALESCE(quota_used, 0) + 1 WHERE username = ?",
             (username,)
         )
+
+    # หากใช้ครบตามโควต้า ให้รีเซ็ต flag quota_notified เป็น 0 เพื่อให้แจ้งเตือนรอบถัดไป
+    cursor.execute("""
+        UPDATE users 
+        SET quota_notified = 0 
+        WHERE username = ? AND quota_used >= ?
+    """, (username, FREE_QUOTA_LIMIT))
 
     conn.commit()
     conn.close()

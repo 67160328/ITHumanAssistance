@@ -222,3 +222,66 @@ export async function testTelegramConnection(token, chatId) {
 
   return { success: true, message: 'เชื่อมต่อ Telegram สำเร็จ! ได้รับข้อความทดสอบแล้ว' };
 }
+
+/**
+ * Send notification to Telegram when quota has been restored / reset
+ */
+export async function sendQuotaRestoredNotification(chatId = null, token = null) {
+  const activeChatId = chatId || getStoredTelegramConfig().chatId;
+  const activeToken = token || getStoredTelegramConfig().token;
+
+  if (!activeChatId) {
+    return { success: false, reason: 'no_chat_id' };
+  }
+
+  const restoredMsg = `🎉 <b>[IT-to-Human Translator] โควต้าพร้อมใช้งานแล้ว!</b>\n\n` +
+    `⚡ โควต้าการแปลภาษาของคุณได้รับการรีเซ็ตแล้ว คุณสามารถกลับมาส่งข้อความแปลความต้องการและประมวลผลคำสั่งได้ตามปกติทันทีครับ\n\n` +
+    `🔗 <i>ระบบพร้อมให้บริการแล้วที่ IT-to-Human Translator Platform</i>`;
+
+  const baseUrl = getBackendBaseUrl();
+  if (baseUrl) {
+    try {
+      const res = await fetch(`${baseUrl}/api/telegram/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: activeToken || null,
+          chat_id: activeChatId,
+          data: {
+            summary: 'โควต้าการใช้งานของคุณได้รับการรีเซ็ตแล้ว พร้อมใช้งานได้ทันที',
+            politeExplanation: 'ระบบได้รีเซ็ตโควต้าสำหรับการแปลภาษาเรียบร้อยแล้ว ท่านสามารถกลับมาใช้งานระบบได้ตามปกติทันทีค่ะ',
+            impact: 'กลับมาใช้งานได้เต็มประสิทธิภาพ',
+            estimatedTime: 'พร้อมใช้งานทันที'
+          },
+          mode: 'tech-to-human',
+          include_json_file: false
+        })
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.info('Backend telegram notification fallback to direct API:', e.message);
+    }
+  }
+
+  // Fallback direct Telegram Bot API
+  if (!activeToken) return { success: false, reason: 'no_token' };
+
+  try {
+    const telegramRes = await fetch(`https://api.telegram.org/bot${activeToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: activeChatId,
+        text: restoredMsg,
+        parse_mode: 'HTML'
+      })
+    });
+    const teleJson = await telegramRes.json().catch(() => null);
+    return { success: teleJson?.ok || false, response: teleJson };
+  } catch (err) {
+    console.error('Failed to send Telegram quota restored notification:', err);
+    return { success: false, error: err.message };
+  }
+}

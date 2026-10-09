@@ -495,15 +495,36 @@ async def telegram_send_endpoint(req: TelegramSendRequest):
 # ==============================================================================
 
 @app.get("/api/user/quota", response_model=QuotaStatusResponse, tags=["Subscription & Quota"])
-def get_user_quota_endpoint(username: Optional[str] = None):
+async def get_user_quota_endpoint(username: Optional[str] = None):
     """
     ตรวจสอบโควต้าการใช้งาน Token/Requests และระยะเวลาที่เหลือของรอบ
+    พร้อมส่งแจ้งเตือน Telegram อัตโนมัติเมื่อโควต้ารีเซ็ตกลับมาใช้งานได้
     """
     quota_info = check_user_quota(username)
     rem_sec = quota_info.get("remaining_seconds", 0)
     hours = rem_sec // 3600
     minutes = (rem_sec % 3600) // 60
     time_str = f"{hours} ชม. {minutes} นาที" if hours > 0 else f"{minutes} นาที" if minutes > 0 else "0 นาที"
+
+    # ถ้าโควต้าเพิ่งถูกรีเซ็ต (just_restored == True) และมี Telegram Chat ID ที่บันทึกไว้ -> ส่งแจ้งเตือน Telegram อัตโนมัติ
+    if quota_info.get("just_restored"):
+        latest_chat_id = get_latest_telegram_chat_id()
+        if latest_chat_id:
+            try:
+                alert_text = (
+                    f"🎉 <b>[IT-to-Human Translator] โควต้าพร้อมใช้งานแล้ว!</b>\n\n"
+                    f"⚡ เรียนคุณ <b>{username or 'ผู้ใช้งาน'}</b> โควต้าการแปลภาษาของคุณได้รับการรีเซ็ตแล้ว ({quota_info['quota_limit']} ครั้ง/รอบ)\n"
+                    f"คุณสามารถกลับมาใช้งานแปลภาษาไอทีและวิเคราะห์ระบบได้ตามปกติทันทีครับ\n\n"
+                    f"🔗 <i>ระบบพร้อมให้บริการแล้วที่ IT-to-Human Translator</i>"
+                )
+                await send_telegram_message(
+                    token="",
+                    chat_id=latest_chat_id,
+                    text=alert_text,
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                print(f"[Telegram Quota Restored Alert] Notice failed: {e}")
 
     return QuotaStatusResponse(
         allowed=quota_info["allowed"],

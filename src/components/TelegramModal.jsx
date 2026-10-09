@@ -136,10 +136,10 @@ export default function TelegramModal({ isOpen, onClose, translationResult, onSe
             </div>
             <div>
               <div style={{ fontSize: '1.05rem', fontWeight: 600, color: '#f8fafc' }}>
-                ส่งโครงสร้างข้อมูลเข้า Telegram
+                {translationResult ? 'ส่งโครงสร้างข้อมูลเข้า Telegram' : 'เชื่อมต่อ Telegram สำหรับการแจ้งเตือน'}
               </div>
               <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                ส่งข้อกำหนด AI และโครงสร้างข้อมูลตรงเข้าห้องแชต/กลุ่ม Telegram
+                {translationResult ? 'ส่งข้อกำหนด AI และโครงสร้างข้อมูลตรงเข้าห้องแชต/กลุ่ม Telegram' : 'รับการแจ้งเตือนอัตโนมัติเมื่อโควต้าใช้งานรีเซ็ตกลับมาใช้งานได้'}
               </div>
             </div>
           </div>
@@ -150,50 +150,90 @@ export default function TelegramModal({ isOpen, onClose, translationResult, onSe
 
         {/* Modal Body */}
         <div className="modal-body">
-          {/* Target Mode Info */}
-          <div style={{
-            background: 'rgba(56, 189, 248, 0.08)',
-            border: '1px solid rgba(56, 189, 248, 0.25)',
-            padding: '0.75rem 1rem',
-            borderRadius: '10px',
-            marginBottom: '1rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '0.5rem'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <MessageSquare size={16} color="#38bdf8" />
-              <div style={{ fontSize: '0.85rem', color: '#e0f2fe' }}>
-                โหมด: <strong>{translationResult?.mode === 'human-to-tech' ? '🛠️ Human-to-Tech' : '✉️ Tech-to-Human'}</strong>
+          {/* Target Mode Info (If translation result exists) */}
+          {translationResult ? (
+            <div style={{
+              background: 'rgba(56, 189, 248, 0.08)',
+              border: '1px solid rgba(56, 189, 248, 0.25)',
+              padding: '0.75rem 1rem',
+              borderRadius: '10px',
+              marginBottom: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '0.5rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <MessageSquare size={16} color="#38bdf8" />
+                <div style={{ fontSize: '0.85rem', color: '#e0f2fe' }}>
+                  โหมด: <strong>{translationResult?.mode === 'human-to-tech' ? '🛠️ Human-to-Tech' : '✉️ Tech-to-Human'}</strong>
+                </div>
               </div>
-            </div>
 
-            {/* Telegram Bot Connected Badge */}
-            <a
-              href="https://t.me/aiithuman_bot"
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                border: '1px solid rgba(16, 185, 129, 0.35)',
-                padding: '3px 8px',
-                borderRadius: '6px',
-                fontSize: '0.74rem',
-                color: '#34d399',
-                textDecoration: 'none'
-              }}
-              title="คลิกเพื่อเปิดบอทใน Telegram และกด START"
-            >
-              <ShieldCheck size={13} />
-              <span>บอท: @aiithuman_bot (กด Start เพื่อเปิดรับข้อความ)</span>
-              <ExternalLink size={10} />
-            </a>
-          </div>
+              {/* Telegram Bot Connected Badge */}
+              <a
+                href="https://t.me/aiithuman_bot"
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                  border: '1px solid rgba(16, 185, 129, 0.35)',
+                  padding: '3px 8px',
+                  borderRadius: '6px',
+                  fontSize: '0.74rem',
+                  color: '#34d399',
+                  textDecoration: 'none'
+                }}
+                title="คลิกเพื่อเปิดบอทใน Telegram และกด START"
+              >
+                <ShieldCheck size={13} />
+                <span>บอท: @aiithuman_bot (กด Start เพื่อเปิดรับข้อความ)</span>
+                <ExternalLink size={10} />
+              </a>
+            </div>
+          ) : (
+            <div style={{
+              background: 'rgba(16, 185, 129, 0.08)',
+              border: '1px solid rgba(16, 185, 129, 0.25)',
+              padding: '0.75rem 1rem',
+              borderRadius: '10px',
+              marginBottom: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '0.5rem'
+            }}>
+              <div style={{ fontSize: '0.85rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <ShieldCheck size={16} />
+                <span>เมื่อโควต้ารีเซ็ต ระบบจะส่งแจ้งเตือนเข้าแชตนี้อัตโนมัติ</span>
+              </div>
+              <a
+                href="https://t.me/aiithuman_bot"
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                  border: '1px solid rgba(16, 185, 129, 0.35)',
+                  padding: '3px 8px',
+                  borderRadius: '6px',
+                  fontSize: '0.74rem',
+                  color: '#34d399',
+                  textDecoration: 'none'
+                }}
+              >
+                <span>เปิดบอท @aiithuman_bot</span>
+                <ExternalLink size={10} />
+              </a>
+            </div>
+          )}
 
           {/* Telegram Chat ID Input (Required) */}
           <div style={{ marginBottom: '1.2rem' }}>
@@ -350,15 +390,38 @@ export default function TelegramModal({ isOpen, onClose, translationResult, onSe
             <button className="btn-secondary" onClick={onClose} disabled={isSending}>
               ยกเลิก
             </button>
-            <button 
-              className="btn-primary" 
-              onClick={handleSend} 
-              disabled={isSending || isTesting}
-              style={{ background: 'linear-gradient(135deg, #0284c7, #0ea5e9)' }}
-            >
-              {isSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-              <span>{isSending ? 'กำลังส่งข้อมูล...' : 'ส่งเข้า Telegram ทันที'}</span>
-            </button>
+            {translationResult ? (
+              <button 
+                className="btn-primary" 
+                onClick={handleSend} 
+                disabled={isSending || isTesting}
+                style={{ background: 'linear-gradient(135deg, #0284c7, #0ea5e9)' }}
+              >
+                {isSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                <span>{isSending ? 'กำลังส่งข้อมูล...' : 'ส่งเข้า Telegram ทันที'}</span>
+              </button>
+            ) : (
+              <button 
+                className="btn-primary" 
+                onClick={() => {
+                  if (!chatId.trim()) {
+                    setStatusMessage({ text: 'กรุณากรอก Telegram Chat ID หรือ @channel', type: 'error' });
+                    return;
+                  }
+                  saveTelegramConfig(botToken, chatId);
+                  setStatusMessage({ text: 'บันทึกการเชื่อมต่อ Telegram สำเร็จ! ระบบจะแจ้งเตือนเมื่อโควต้ารีเซ็ต', type: 'success' });
+                  if (onSentSuccess) onSentSuccess('บันทึกการเชื่อมต่อ Telegram สำเร็จ!');
+                  setTimeout(() => {
+                    onClose();
+                  }, 1200);
+                }} 
+                disabled={isSending || isTesting}
+                style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
+              >
+                <Check size={16} />
+                <span>บันทึกการเชื่อมต่อ</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

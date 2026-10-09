@@ -105,6 +105,12 @@ export default function App() {
       if (docs && docs.length) setDocCount(docs.length);
     }).catch(() => {});
     refreshQuota();
+
+    // Check quota status every 30 seconds (triggers Telegram alert if reset time passed)
+    const interval = setInterval(() => {
+      refreshQuota();
+    }, 30000);
+    return () => clearInterval(interval);
   }, [currentUser]);
 
   const currentPresets = mode === 'human-to-tech' ? PRESETS.humanToTech : PRESETS.techToHuman;
@@ -320,6 +326,7 @@ export default function App() {
           showToast(res.message || 'ยินดีต้อนรับสู่สมาชิก Pro Plan!');
           refreshQuota();
         }}
+        onOpenTelegram={() => setIsTelegramModalOpen(true)}
       />
 
       {/* Change Password Modal */}
@@ -444,6 +451,13 @@ export default function App() {
               {isPro ? 'คลิกเปลี่ยนเป็น Free' : 'คลิกเปลี่ยนเป็น Pro'}
             </button>
           </div>
+
+          {/* Quota Badge with Telegram Alert Trigger */}
+          <QuotaBadge 
+            quotaStatus={quotaStatus}
+            onOpenSubscription={() => setIsSubscriptionOpen(true)}
+            onOpenTelegram={() => setIsTelegramModalOpen(true)}
+          />
 
           {/* Knowledge Base Button */}
           <button

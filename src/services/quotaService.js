@@ -3,8 +3,11 @@
  * Works seamlessly with FastAPI backend and has full localStorage fallback.
  */
 
+import { sendQuotaRestoredNotification } from './telegramService';
+
 const LOCAL_QUOTA_KEY = 'it_translator_quota_data';
 const LOCAL_TIER_KEY = 'it_translator_user_tier';
+const LOCAL_NOTIFIED_KEY = 'it_translator_quota_notified';
 
 const DEFAULT_FREE_LIMIT = 5;
 const DEFAULT_WINDOW_HOURS = 4;
@@ -108,9 +111,17 @@ export async function getQuotaStatus(username = null) {
     const resetTime = new Date(resetAt);
     if (now >= resetTime) {
       // Period expired -> reset
+      const wasExhausted = used >= DEFAULT_FREE_LIMIT;
       used = 0;
       resetAt = null;
       saveLocalData({ used: 0, resetAt: null });
+
+      // If user had exhausted their quota and hasn't been notified yet for this cycle
+      const alreadyNotified = localStorage.getItem(LOCAL_NOTIFIED_KEY) === 'true';
+      if (wasExhausted && !alreadyNotified) {
+        localStorage.setItem(LOCAL_NOTIFIED_KEY, 'true');
+        sendQuotaRestoredNotification().catch(() => {});
+      }
     } else {
       remainingSeconds = Math.max(0, Math.floor((resetTime - now) / 1000));
     }
@@ -142,6 +153,11 @@ export function consumeLocalQuota() {
   if (!resetAt) {
     const nextReset = new Date(now.getTime() + DEFAULT_WINDOW_HOURS * 3600 * 1000);
     resetAt = nextReset.toISOString();
+  }
+
+  // If user reaches limit, mark notified as false so they get alerted when quota restores
+  if (used >= DEFAULT_FREE_LIMIT) {
+    localStorage.setItem(LOCAL_NOTIFIED_KEY, 'false');
   }
 
   saveLocalData({ used, resetAt });
