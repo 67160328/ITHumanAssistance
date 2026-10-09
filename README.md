@@ -1,27 +1,26 @@
 # 🌐 IT-to-Human Translator (ล่ามแปลภาษาไอทีอัจฉริยะ)
 
 > **Enterprise AI-Powered Requirement Engineering & Technical Communication Platform**  
-> โครงงานพัฒนาเว็บแอปพลิเคชัน Full-Stack ที่ทลายกำแพงการสื่อสารระหว่าง **"ฝ่ายธุรกิจ/ลูกค้า (Non-Tech)"** และ **"ทีมพัฒนา/โปรแกรมเมอร์ (Tech)"** ขับเคลื่อนด้วย **FastAPI**, **React + Vite**, **SQLite Database**, **Telegram Bot Webhook**, **Database Indexing Optimization Studio**, **Multi-AI Provider Architecture (Gemini, OpenAI, Claude, Local LLM)** และ **Docker**
+> โครงงานพัฒนาเว็บแอปพลิเคชัน Full-Stack ที่ทลายกำแพงการสื่อสารระหว่าง **"ฝ่ายธุรกิจ/ลูกค้า (Non-Tech)"** และ **"ทีมพัฒนา/โปรแกรมเมอร์ (Tech)"** ขับเคลื่อนด้วย **FastAPI (Python 3.11+)**, **React 18 + Vite**, **SQLite Database (Persistent & Indexed)**, **Telegram Bot Webhook**, **Database Indexing Optimization Studio**, **Multi-AI Provider Gateway (Gemini, OpenAI, Claude, Local LLM)**, **Clean Enterprise Blue-White Design System** และ **Docker Containerization**
 
 ---
 
-## 📊 การประเมินผลการดำเนินงานของโปรเจกต์ตามความจริง (Realistic Self-Evaluation Progress)
+## 📊 การประเมินผลการดำเนินงานของโปรเจกต์ตามความเป็นจริง (Realistic Self-Evaluation Progress)
 
 | ระยะการพัฒนา (Roadmap Phases) | รายละเอียดขอบเขตงาน | สถานะตามจริง | สัดส่วนงาน (%) | ดำเนินการเสร็จจริง |
 | :--- | :--- | :---: | :---: | :---: |
 | **Phase 1: MVP & Context Ingestion** | Project Context Selector, Multi-format Export (OpenAPI, Jira, PDF, Email), Man-Days Estimator | **เสร็จสมบูรณ์** | 20% | 20% / 20% |
-| **Phase 2: Knowledge Base & Security** | SQLite Database, RAG Ingestion Engine, Impact Analysis, PII Sanitizer Guardrails, Full Auth System | **เสร็จสมบูรณ์** | 25% | 25% / 25% |
+| **Phase 2: Knowledge Base & Security** | SQLite Database, RAG Ingestion Engine, Impact Analysis, PII Sanitizer Guardrails, Enterprise Auth & Password Policy | **เสร็จสมบูรณ์** | 25% | 25% / 25% |
 | **Phase 3: Direct Toolchain & Bot Integration** | Telegram Bot One-click Delivery (Direct Channel/Group Forwarding, Saved Recipient DB) | **เสร็จสมบูรณ์** | 15% | 15% / 15% |
-| **Phase 4: Token Quota & Monetization** | โครงสร้าง Rate Limit, Cooldown Modal, Pro Upgrade UI (ยังค้างการนับรอบตัดสิทธิ์ใช้งานจริงอย่างเข้มงวด และระบบส่งแจ้งเตือน Telegram หลังคูลดาวน์) | 🟡 **กำลังปรับปรุง (60%)** | 10% | **6%** / 10% |
+| **Phase 4: Token Quota & Monetization** | Rate Limiting Guard (5 ครั้ง/4 ชม.), Cooldown Timer, Pro Plan Upgrade, Telegram Quota Restoration Auto-Alert, Demo Mode Switcher | **เสร็จสมบูรณ์** | 10% | 10% / 10% |
 | **Phase 5: High-Performance Database & Lab** | Core Production Indexes, Benchmark Sandbox (50k rows), Interactive Indexing Lab & Student Guide | **เสร็จสมบูรณ์** | 15% | 15% / 15% |
-| **Phase 6: Multi-AI Model Gateway & Router** | โครงสร้างสถาปัตยกรรม Decoupled AI และ Multi-candidate Fallback บน Gemini (ส่วน OpenAI, Claude, และ Ollama ยังอยู่ในขั้นตอนการเชื่อมต่อ Endpoint เพิ่มเติม) | 🟠 **วางโครงสร้างแล้ว (33%)** | 15% | **5%** / 15% |
-| **รวมความคืบหน้าภาพรวมทั้งหมด** | **ประเมินผลงานจากสถานะการพัฒนาจริง 100%** | ⏳ **พัฒนาไปแล้ว** | **100%** | **81% / 100%** |
+| **Phase 6: Multi-AI Model Gateway & Router** | โครงสร้างสถาปัตยกรรม Decoupled AI และ Multi-candidate Fallback บน Gemini (ส่วน OpenAI, Claude, และ Ollama อยู่ในระดับโครงสร้างสถาปัตยกรรมพร้อมเชื่อมต่อ) | 🟠 **วางโครงสร้างแล้ว (33%)** | 15% | **5%** / 15% |
+| **รวมความคืบหน้าภาพรวมทั้งหมด** | **ประเมินผลงานจากสถานะการพัฒนาจริง 100%** | ⏳ **พัฒนาไปแล้ว** | **100%** | **85% / 100%** |
 
-> 🎯 **สรุปสถานะตามความเป็นจริง (81% Completed):**
-> * **ส่วนที่เสร็จสมบูรณ์ 100% (75% ของงาน):** Core Translation, Impact Analysis, RAG Knowledge Base, PII Sanitizer, Full Auth, Telegram Bot Integration และ Database Indexing Lab Studio
-> * **ส่วนที่อยู่ระหว่างดำเนินการและปรับปรุง (25% ของงาน):**
->   1. **Token Quota Enforcement:** ปัจจุบันมี UI นับเวลาและระบบบันทึก แต่**ยังไม่ได้เปิดใช้นับจำนวนครั้งจำกัดจริงแบบเข้มงวด** และ**รอเชื่อมต่อระบบ Background Task ยิงแจ้งเตือนผ่าน Telegram** เมื่อถึงเวลาคูลดาวน์
->   2. **Multi-AI Provider Implementation:** ปัจจุบันเชื่อมต่อและมี Fallback Pool บนตระกูล **Google Gemini** แล้ว ส่วนการเชื่อมต่อ OpenAI API, Anthropic Claude และ Local LLM อยู่ในระดับโครงสร้างสถาปัตยกรรม (Architecture Ready) ที่ต้องเพิ่ม API Keys และ Client Driver จริงในขั้นตอนถัดไป
+> 🎯 **สรุปสถานะตามความเป็นจริง (85% Completed):**
+> * **ส่วนที่เสร็จสมบูรณ์ 100% (80% ของงาน):** Core Translation, Impact Analysis, RAG Knowledge Base, PII Sanitizer, Full Auth System พร้อม Password Strength Meter, Telegram Bot Integration & Delivery, Token Quota Enforcement พร้อม Telegram Auto-Restoration Alert, Pro Upgrade Modal, Demo Mode Switcher, Clean Blue-White Enterprise Theme และ Database Indexing Lab Studio
+> * **ส่วนที่อยู่ระหว่างขยายผล (15% ของงาน):**
+>   1. **Multi-AI Provider Integration:** ปัจจุบันเชื่อมต่อและมี Candidate Fallback Pool ใช้งานได้จริงบนตระกูล **Google Gemini** (Gemini 2.5 Flash, Gemini 2.0 Flash, Gemini 1.5 Pro) ส่วน OpenAI, Claude และ Local LLM มีสถาปัตยกรรม Decoupled Driver รองรับในโครงสร้าง
 
 ---
 
@@ -33,7 +32,7 @@
 flowchart TB
     subgraph ClientLayer["🖥️ Client Tier (Presentation Layer)"]
         UserBrowser["User Web Browser"]
-        SPA["React 18 + Vite SPA\n(Glassmorphic Dark UI)"]
+        SPA["React 18 + Vite SPA\n(Clean Blue-White Enterprise UI)"]
         LocalStorage["Local Storage Cache\n(Offline Resilient Engine)"]
     end
 
@@ -58,7 +57,7 @@ flowchart TB
     end
 
     subgraph ExternalServices["☁️ External Multi-Cloud & AI Providers"]
-        GeminiAI["Google Gemini AI API\n(Flash 1.5 / 2.0 / Pro)"]
+        GeminiAI["Google Gemini AI API\n(Flash 1.5 / 2.0 / 2.5 / Pro)"]
         OpenAI["OpenAI API\n(GPT-4o / GPT-4o-mini)"]
         ClaudeAI["Anthropic Claude API\n(Claude 3.5 Sonnet / Haiku)"]
         LocalLLM["Local Ollama / vLLM\n(Llama 3 / DeepSeek)"]
@@ -106,7 +105,7 @@ flowchart LR
     subgraph Frontend["🎨 Front-End Technology Stack"]
         F1["React 18"]
         F2["Vite 5 (Build Tool)"]
-        F3["Vanilla Modern CSS\n(Glassmorphism / Tokens)"]
+        F3["Clean Enterprise CSS System\n(Theme Tokens / Blue-White)"]
         F4["Lucide React (Icons)"]
         F5["HTML5 & ES6+ Modules"]
     end
@@ -123,11 +122,11 @@ flowchart LR
         D1["SQLite 3 (Persistent Engine)"]
         D2["SQL Schema & Core B-Tree Indexes"]
         D3["Indexing Lab Sandbox (50k rows)"]
-        D4["Browser LocalStorage (Fallback)"]
+        D4["Browser LocalStorage (Offline Resilient)"]
     end
 
     subgraph AIProviders["🤖 Multi-AI Gateway Providers"]
-        A1["Google Gemini (Flash 1.5, 2.0, Pro)"]
+        A1["Google Gemini (Flash 1.5, 2.0, 2.5, Pro)"]
         A2["OpenAI API (GPT-4o, GPT-4o-mini)"]
         A3["Anthropic Claude (3.5 Sonnet)"]
         A4["Local Private LLM (Ollama / vLLM)"]
@@ -162,25 +161,35 @@ flowchart LR
 * **Everyday Analogy:** ใช้อุปมาอุปไมยเปรียบเทียบกับชีวิตประจำวันเพื่อความเข้าใจง่าย
 * **Client Email Generator:** แปลงสถานะทางเทคนิคเป็นร่างอีเมลทางการส่งให้ลูกค้าได้ทันที
 
-### 3. 🤖 Multi-AI Model Gateway & Smart Fallback Router
-* **Multi-Provider Support:** โครงสร้าง API ออกแบบให้รองรับ AI หลากหลายผู้ให้บริการ (Google Gemini, OpenAI GPT, Anthropic Claude, และ On-Premise Local LLMs ผ่าน Ollama/vLLM)
-* **Automatic Model Fallback (Failover Engine):** มีระบบจัดการ Candidate Models หากค่ายใดค่ายหนึ่งเกิดข้อผิดพลาด (เช่น Rate Limit 429, Token Exhausted, หรือ Server Timeout) ระบบจะสลับไปเรียกโมเดลสำรองใน Candidate Pool โดยอัตโนมัติ ทำให้เว็บไม่หยุดทำงาน
-* **Decoupled AI Driver:** สถาปัตยกรรมแยกส่วนตรรกะการเรียก AI (AI Connector) ออกจาก Business Logic อย่างสิ้นเชิง รองรับการเพิ่ม API AI ใหม่ๆ เข้าสู่ระบบได้ง่ายเพียงเพิ่ม Driver Endpoint
-* **Cost & Privacy Optimizer:** สามารถเลือกใช้งานโหมด **Private Local AI** เมื่อทำงานกับข้อมูลที่มีความลับสูงเพื่อป้องกันข้อมูลรั่วไหลออกนอกองค์กร
+### 3. 🎨 Clean Enterprise Design System & Multi-Theme System
+* **Modern Blue-White Palette:** โทนสีขาวสว่าง สะอาดตา มินิมอล พร้อมสีน้ำเงินครามระดับองค์กร (Ocean Blue & Crisp White) ลดความเมื่อยล้าสายตาและเพิ่มความน่าเชื่อถือ
+* **Theme Tokens Support:** รองรับการปรับเปลี่ยนธีมผ่าน CSS Variables (Ocean Blue, Emerald Green, Warm Amber)
+* **Responsive & Micro-Interactions:** ออกแบบให้ใช้งานได้สมบูรณ์ทั้งจอเดสก์ท็อปและแท็บเล็ต พร้อม Skeleton Loading และ Transition ที่ลื่นไหล
 
-### 4. Telegram Bot One-Click Delivery Integration
+### 4. 🔐 Enterprise Authentication, Password Policy & Offline Fallback
+* **Full Authentication Flow:** หน้าสมัครสมาชิกและเข้าสู่ระบบ (`AuthModal` / `AuthPage`) พร้อมจัดการ Session Token
+* **Interactive Password Strength Meter:** ตรวจสอบความปลอดภัยของรหัสผ่านแบบ Real-time พร้อม Checklists (ความยาว ≥ 8 ตัว, ตัวพิมพ์เล็ก, ตัวพิมพ์ใหญ่, ตัวเลข, สัญลักษณ์พิเศษ)
+* **Change Password Dialog:** ผู้ใช้สามารถเปลี่ยนรหัสผ่านได้เองอย่างปลอดภัย (`ChangePasswordModal`)
+* **Offline Resilient Architecture:** หากเซิร์ฟเวอร์ Backend ขัดข้อง ระบบจะสลับไปบันทึกและตรวจสอบผู้ใช้ผ่าน Browser LocalStorage โดยอัตโนมัติ ทำให้ผู้ใช้ยังเข้าใช้งานได้ต่อเนื่อง
+
+### 5. 🛡️ Corporate Knowledge Base (RAG) & PII Sanitizer
+* **RAG Document Ingestion:** อัปโหลดและจัดเก็บเอกสารสถาปัตยกรรมองค์กร (SRS, API Docs, Tech Stack Guidelines) ลง SQLite Database พร้อมระบบค้นหาบริบทที่เกี่ยวข้องอัตโนมัติ
+* **PII & Sensitive Data Sanitizer:** ระบบสแกนและเซนเซอร์ข้อมูลสำคัญ (Masking) ก่อนส่งออกไปยังโมเดล AI เช่น Email, เบอร์โทรศัพท์, เลขบัตรประชาชน, เลขบัตรเครดิต, และ API Keys
+
+### 6. ⏱️ Token Quota & Subscription Management (เสร็จสมบูรณ์)
+* **Rate Limiting Guard & Quota Tracking:** กำหนดโควตาการใช้งานชัดเจน (Free Tier: 5 ครั้ง / รอบ 4 ชั่วโมง, จำกัดความยาว ≤ 350 ตัวอักษร) พร้อมบล็อกคำขอเมื่อโควตาหมด
+* **Cooldown Countdown Timer:** ป้ายแสดงสถานะโควตา (`QuotaBadge`) พร้อมคำนวณเวลานับถอยหลังรอบรีเซ็ตแบบ Real-time
+* **Demo Mode Switcher:** ปุ่มสลับโหมด Free / Pro ได้ทันทีในคลิกเดียวบน Navbar เพื่อความสะดวกรวดเร็วในการทดสอบฟีเจอร์
+* **Subscription Modal:** หน้าจอจำลองการอัปเกรดเป็น Pro Plan ผ่าน PromptPay QR Code หรือบัตรเครดิต ปลดล็อกการใช้งานแบบ Unlimited ทันที
+* **🎉 Telegram Quota Restoration Auto-Alert:** เมื่อโควต้าหมดและผู้ใช้ผูก Telegram Chat ID ไว้ ระบบจะส่งข้อความแจ้งเตือนอัตโนมัติเข้า Telegram ทันทีที่โควต้ารีเซ็ตกลับมาใช้งานได้ (**"🎉 โควต้าพร้อมใช้งานแล้ว! คุณสามารถกลับมาใช้งานแปลภาษาได้ตามปกติทันที"**) ทำงานได้ทั้งฝั่ง Backend FastAPI และ Frontend Web
+
+### 7. ✈️ Telegram Bot One-Click Delivery Integration
 * **Direct Dispatch:** ส่งโครงสร้างผลลัพธ์การแปลเข้า Telegram Channel / Group / Direct Chat ได้ในคลิกเดียว
-* **Built-in System Bot Token:** มี Bot Token ระบบพร้อมใช้งาน ไม่ต้องให้ผู้ใช้ตั้งค่าเอง
+* **Built-in System Bot Token:** มี Bot Token ระบบพร้อมใช้งาน ไม่ต้องให้ผู้ใช้สร้างบอทเอง
 * **Database Recipient Memory:** บันทึก Chat ID ที่เคยส่งลง SQLite ให้อัตโนมัติ เพื่อความสะดวกในการใช้งานรอบถัดไป
-* **Dual Deliverables:** ส่งทั้งข้อความสรุป Markdown และแนบไฟล์โครงสร้าง JSON/Markdown
+* **Dual Deliverables:** ส่งทั้งข้อความสรุป Markdown และแนบไฟล์โครงสร้าง JSON/Markdown เข้า Telegram ได้ทันที
 
-### 5. Token Quota & Subscription Management
-* **Rate Limiting Guard & Cooldown:** มีกลไกหน้าต่างเวลาและ Cooldown Alert Modal คำนวณเวลานับถอยหลัง (เช่น "ใช้ได้อีกทีใน 3 ชม. 45 นาที") พร้อมปุ่ม Pro Tier Upgrade ผ่านแบบฟอร์ม PromptPay จำลอง
-* **🔍 ข้อสังเกตและสถานะการทำงานปัจจุบัน (Known Status & Limitations):**
-  * **การนับ Token รายครั้ง (Execution Counter):** ปัจจุบันการจำกัดยังเน้นตรวจจับรอบและคูลดาวน์เวลา แต่**ยังไม่ได้เปิดใช้นับจำนวนครั้งจำกัดจริงแบบเข้มงวด (Request Usage Count / Token Strict Limit)** ผู้ใช้จึงยังสามารถกดแปลต่อได้หากระบบยังไม่ได้ตัดรอบเด็ดขาด
-  * **Telegram Cooldown Notification (Roadmap & Feature Planned):** ในกรณีที่โควตาหรือ Token หมด หากผู้ใช้ได้เชื่อมต่อและบันทึก **Telegram Chat ID** ไว้ในระบบ จะมีฟังก์ชันตั้งเวลา (Scheduled Background Task) ส่งข้อความแจ้งเตือนอัตโนมัติเข้า Telegram ทันทีว่า **"🎉 เว็บไซต์พร้อมให้คุณใช้งานได้ตามรอบเวลาที่กำหนดแล้ว!"** เพื่อให้ผู้ใช้กลับเข้ามาใช้งานได้โดยไม่ต้องคอยเฝ้าหน้าเว็บ
-
-### 6. 🧪 Database Indexing Lab & Performance Optimization Studio
+### 8. 🧪 Database Indexing Lab & Performance Optimization Studio
 * **Core Production Indexes:** เพิ่ม B-Tree Index บนตาราง `history`, `rag_chunks`, `users`, `telegram_recipients` เพื่อให้ Query รวดเร็ว
 * **Big Data Sandbox (50,000 แถว):** ปั๊มข้อมูลจำลองธุรกรรมขนาดใหญ่ด้วย High-Speed Bulk Seeding (PRAGMA optimized)
 * **Interactive Plan Analysis:** คำสั่ง `EXPLAIN QUERY PLAN` แสดงการทำงานระหว่าง **Full Table Scan ($O(N)$)** เทียบกับ **Index Seek ($O(\log N)$)**
@@ -236,45 +245,50 @@ npm run dev
 ITHumanAssistance/
 ├── backend/
 │   ├── app.db                 # SQLite Database เก็บข้อมูลถาวร
-│   ├── database.py            # SQLite Connection, Schema, Production Indexes
+│   ├── database.py            # SQLite Connection, Schema, Quota Engine & Production Indexes
 │   ├── Dockerfile             # Dockerfile สำหรับ FastAPI Microservice
 │   ├── indexing_service.py    # Database Benchmark & Query Plan Analyzer Engine
 │   ├── main.py                # REST API Endpoints, Quota, Telegram & Lab Routes
 │   ├── models.py              # Pydantic Schemas สำหรับ Request/Response
 │   ├── requirements.txt       # Python Dependencies
 │   ├── services.py            # RAG Engine, PII Sanitizer & Multi-AI Integration
-│   └── telegram_service.py    # Telegram Bot Direct Delivery Service
+│   └── telegram_service.py    # Telegram Bot Direct Delivery & Notification Service
 ├── indexing-lab-guide/
 │   └── STUDENT_LAB_GUIDE.md   # คู่มือปฏิบัติการ Database Indexing สำหรับนิสิต
 ├── src/
 │   ├── components/
 │   │   ├── AuthModal.jsx             # Dialog เข้าสู่ระบบ / สมัครสมาชิก
 │   │   ├── AuthPage.jsx              # Form เข้าสู่ระบบพร้อม Password Strength Meter
-│   │   ├── ChangePasswordModal.jsx   # Dialog เปลี่ยนรหัสผ่าน
+│   │   ├── ChangePasswordModal.jsx   # Dialog เปลี่ยนรหัสผ่านพร้อม Password Policy
 │   │   ├── ImpactAnalysisCard.jsx    # Component แสดงผลกระทบสถาปัตยกรรมเดิม
 │   │   ├── IndexingLabModal.jsx      # ห้องทดลองจำลองและวิเคราะห์ Database Indexing
 │   │   ├── KnowledgeBaseModal.jsx    # Dialog จัดการคลังเอกสารองค์กร (RAG)
-│   │   ├── QuotaBadge.jsx            # ป้ายแสดงสถานะโควตาและแจ้งเตือนคูลดาวน์
+│   │   ├── QuotaBadge.jsx            # ป้ายแสดงสถานะโควตา, คูลดาวน์ และแจ้งเตือน Telegram
 │   │   ├── SettingsModal.jsx         # Dialog ตั้งค่า AI API Keys และ Telegram Bot
-│   │   ├── SubscriptionModal.jsx     # Dialog สมัครสมาชิก Pro Plan ปลดล็อกโควตา
+│   │   ├── SubscriptionModal.jsx     # Dialog อัปเกรด Pro Plan พร้อม PromptPay QR Code
 │   │   ├── TelegramModal.jsx         # Dialog ส่งผลลัพธ์เข้า Telegram Chat / Channel
 │   │   └── UserMenu.jsx              # Avatar และ Dropdown โปรไฟล์ผู้ใช้
 │   ├── services/
 │   │   ├── aiService.js              # Client Direct Multi-AI Caller & Candidates
+│   │   ├── authService.js            # Authentication & Offline Resilient Storage
+│   │   ├── documentService.js        # RAG Document Management Service
 │   │   ├── indexingLabService.js     # API Service สำหรับ Indexing Lab
 │   │   ├── quotaService.js           # API Service จัดการ Quota & Subscription
-│   │   ├── telegramService.js        # Telegram Bot Client Service
+│   │   ├── securityService.js        # PII Regex Masking Client Service
+│   │   ├── telegramService.js        # Telegram Bot Client & Restoration Alert Service
 │   │   └── translator.js             # Main Translator Orchestrator
 │   ├── App.jsx                       # หน้าจอหลักของ Web Application
-│   ├── index.css                     # Modern Glassmorphic Dark UI Design System
+│   ├── index.css                     # Modern Clean Enterprise Design System (Blue-White)
 │   └── main.jsx                      # React Entry Point
-├── docker-compose.yml                # Multi-container Setup
+├── docker-compose.yml                # Multi-container Orchestration (Frontend + Backend)
 ├── Dockerfile.frontend               # Nginx Web Server Container
-├── start_server.bat                  # One-click Dual Server Launcher
+├── start_server.bat                  # One-click Dual Server Launcher (FastAPI + Vite)
+├── เปิดเว็บ_Localhost.bat            # One-click Shortcut เปิดเบราว์เซอร์ไปที่ http://localhost:3000
 └── package.json                      # Node.js Dependencies & NPM Scripts
 ```
 
 ---
+
 
 ## 📄 License
 This project is developed for educational purposes under the **Computer Science & Web Application Curriculum**. Open-source under the [MIT License](LICENSE).
