@@ -12,15 +12,16 @@
 | **Phase 1: MVP & Context Ingestion** | Project Context Selector, Multi-format Export (OpenAPI, Jira, PDF, Email), Man-Days Estimator | **เสร็จสมบูรณ์** | 20% | 20% / 20% |
 | **Phase 2: Knowledge Base & Security** | SQLite Database, RAG Ingestion Engine, Impact Analysis, PII Sanitizer Guardrails, Full Auth System | **เสร็จสมบูรณ์** | 25% | 25% / 25% |
 | **Phase 3: Direct Toolchain & Bot Integration** | Telegram Bot One-click Delivery (Direct Channel/Group Forwarding, Saved Recipient DB) | **เสร็จสมบูรณ์** | 15% | 15% / 15% |
-| **Phase 4: Token Quota & Monetization** | โครงสร้าง Rate Limit, Cooldown Modal, Pro Upgrade UI, Context Limiting, Demo Mode Switcher, และระบบส่งแจ้งเตือน Telegram อัตโนมัติเมื่อโควต้าถูกรีเซ็ต | 🟢 **เสร็จสมบูรณ์ (100%)** | 10% | **10%** / 10% |
+| **Phase 4: Token Quota & Monetization** | โครงสร้าง Rate Limit, Cooldown Modal, Pro Upgrade UI (ยังค้างการนับรอบตัดสิทธิ์ใช้งานจริงอย่างเข้มงวด และระบบส่งแจ้งเตือน Telegram หลังคูลดาวน์) | 🟡 **กำลังปรับปรุง (60%)** | 10% | **6%** / 10% |
 | **Phase 5: High-Performance Database & Lab** | Core Production Indexes, Benchmark Sandbox (50k rows), Interactive Indexing Lab & Student Guide | **เสร็จสมบูรณ์** | 15% | 15% / 15% |
 | **Phase 6: Multi-AI Model Gateway & Router** | โครงสร้างสถาปัตยกรรม Decoupled AI และ Multi-candidate Fallback บน Gemini (ส่วน OpenAI, Claude, และ Ollama ยังอยู่ในขั้นตอนการเชื่อมต่อ Endpoint เพิ่มเติม) | 🟠 **วางโครงสร้างแล้ว (33%)** | 15% | **5%** / 15% |
-| **รวมความคืบหน้าภาพรวมทั้งหมด** | **ประเมินผลงานจากสถานะการพัฒนาจริง 100%** | ⏳ **พัฒนาไปแล้ว** | **100%** | **85% / 100%** |
+| **รวมความคืบหน้าภาพรวมทั้งหมด** | **ประเมินผลงานจากสถานะการพัฒนาจริง 100%** | ⏳ **พัฒนาไปแล้ว** | **100%** | **81% / 100%** |
 
-> 🎯 **สรุปสถานะตามความเป็นจริง (85% Completed):**
-> * **ส่วนที่เสร็จสมบูรณ์ 100% (85% ของงาน):** Core Translation, Impact Analysis, RAG Knowledge Base, PII Sanitizer, Full Auth, Telegram Bot Integration, Token Quota & Telegram Auto-Notification, Demo Mode Switcher, และ Database Indexing Lab Studio
-> * **ส่วนที่อยู่ระหว่างดำเนินการและปรับปรุง (15% ของงาน):**
->   1. **Multi-AI Provider Implementation:** ปัจจุบันเชื่อมต่อและมี Fallback Pool บนตระกูล **Google Gemini** แล้ว ส่วนการเชื่อมต่อ OpenAI API, Anthropic Claude และ Local LLM อยู่ในระดับโครงสร้างสถาปัตยกรรม (Architecture Ready) ที่ต้องเพิ่ม API Keys และ Client Driver จริงในขั้นตอนถัดไป
+> 🎯 **สรุปสถานะตามความเป็นจริง (81% Completed):**
+> * **ส่วนที่เสร็จสมบูรณ์ 100% (75% ของงาน):** Core Translation, Impact Analysis, RAG Knowledge Base, PII Sanitizer, Full Auth, Telegram Bot Integration และ Database Indexing Lab Studio
+> * **ส่วนที่อยู่ระหว่างดำเนินการและปรับปรุง (25% ของงาน):**
+>   1. **Token Quota Enforcement:** ปัจจุบันมี UI นับเวลาและระบบบันทึก แต่**ยังไม่ได้เปิดใช้นับจำนวนครั้งจำกัดจริงแบบเข้มงวด** และ**รอเชื่อมต่อระบบ Background Task ยิงแจ้งเตือนผ่าน Telegram** เมื่อถึงเวลาคูลดาวน์
+>   2. **Multi-AI Provider Implementation:** ปัจจุบันเชื่อมต่อและมี Fallback Pool บนตระกูล **Google Gemini** แล้ว ส่วนการเชื่อมต่อ OpenAI API, Anthropic Claude และ Local LLM อยู่ในระดับโครงสร้างสถาปัตยกรรม (Architecture Ready) ที่ต้องเพิ่ม API Keys และ Client Driver จริงในขั้นตอนถัดไป
 
 ---
 
@@ -174,10 +175,10 @@ flowchart LR
 * **Dual Deliverables:** ส่งทั้งข้อความสรุป Markdown และแนบไฟล์โครงสร้าง JSON/Markdown
 
 ### 5. Token Quota & Subscription Management
-* **Rate Limiting Guard & Quota Tracking:** ระบบจำกัดโควตาการใช้งานตามแพ็กเกจ (Free Mode: 1,000 tokens / 5 ข้อความต่อชั่วโมง, Pro Mode: 50,000 tokens / ไม่จำกัด) พร้อมตัวนับถอยหลังคูลดาวน์รอบเวลา
-* **Context Limiting สำหรับ Free Mode:** บีบอัดขนาดประวัติการสนทนาเพื่อประหยัด Token สำหรับผู้ใช้งานฟรี
-* **Demo Mode Switcher:** ปุ่มสลับโหมด Free / Pro ได้ทันทีทั้งก่อนและหลังล็อกอินเพื่อความสะดวกในการทดสอบฟีเจอร์
-* **Telegram Auto-Alert เมื่อโควต้าพร้อมใช้งาน:** เมื่อโควต้าหมดและผู้ใช้ผูก Telegram Chat ID ไว้ ระบบจะตั้งเวลาตรวจสอบและส่งแจ้งเตือนเข้า Telegram โดยอัตโนมัติทันทีที่โควต้าถูกรีเซ็ตกลับมาใช้งานได้ (**"🎉 โควต้าการแปลของคุณได้รับการรีเซ็ตแล้ว! พร้อมกลับมาใช้งานต่อได้ทันที"**) ทั้งในฝั่ง Backend FastAPI และ Frontend Web
+* **Rate Limiting Guard & Cooldown:** มีกลไกหน้าต่างเวลาและ Cooldown Alert Modal คำนวณเวลานับถอยหลัง (เช่น "ใช้ได้อีกทีใน 3 ชม. 45 นาที") พร้อมปุ่ม Pro Tier Upgrade ผ่านแบบฟอร์ม PromptPay จำลอง
+* **🔍 ข้อสังเกตและสถานะการทำงานปัจจุบัน (Known Status & Limitations):**
+  * **การนับ Token รายครั้ง (Execution Counter):** ปัจจุบันการจำกัดยังเน้นตรวจจับรอบและคูลดาวน์เวลา แต่**ยังไม่ได้เปิดใช้นับจำนวนครั้งจำกัดจริงแบบเข้มงวด (Request Usage Count / Token Strict Limit)** ผู้ใช้จึงยังสามารถกดแปลต่อได้หากระบบยังไม่ได้ตัดรอบเด็ดขาด
+  * **Telegram Cooldown Notification (Roadmap & Feature Planned):** ในกรณีที่โควตาหรือ Token หมด หากผู้ใช้ได้เชื่อมต่อและบันทึก **Telegram Chat ID** ไว้ในระบบ จะมีฟังก์ชันตั้งเวลา (Scheduled Background Task) ส่งข้อความแจ้งเตือนอัตโนมัติเข้า Telegram ทันทีว่า **"🎉 เว็บไซต์พร้อมให้คุณใช้งานได้ตามรอบเวลาที่กำหนดแล้ว!"** เพื่อให้ผู้ใช้กลับเข้ามาใช้งานได้โดยไม่ต้องคอยเฝ้าหน้าเว็บ
 
 ### 6. 🧪 Database Indexing Lab & Performance Optimization Studio
 * **Core Production Indexes:** เพิ่ม B-Tree Index บนตาราง `history`, `rag_chunks`, `users`, `telegram_recipients` เพื่อให้ Query รวดเร็ว
@@ -209,7 +210,7 @@ cd ITHumanAssistance
 # 2. สั่งรัน Containers
 docker compose up -d --build
 ```
-* **Frontend Web (Docker Container):** [http://localhost:3001](http://localhost:3001) *(หมายเหตุ: หากรันแบบ Vite dev server ปกติจะอยู่ที่ [http://localhost:3000](http://localhost:3000))*
+* **Frontend Web:** [http://localhost:3000](http://localhost:3000)
 * **Backend API Docs (Swagger):** [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ---
