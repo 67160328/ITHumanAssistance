@@ -22,3 +22,6 @@ venv/
 Thumbs.db
 .vscode/
 .idea/
+
+# Local plans & docs
+phase6_detailed_plan.md
