@@ -47,7 +47,7 @@ export async function translateText(
   if (baseUrl) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       const response = await fetch(`${baseUrl}/api/translate`, {
         method: 'POST',
@@ -182,12 +182,80 @@ function getLocalHumanToTech(text, projectContext = null) {
     ];
   }
 
+  const lower = text.toLowerCase();
+  const isUiOnly = /ปุ่ม|หน้าจอ|สี|ui|ux|วิบวับ|สวย|ธีม|animation/.test(lower);
+
+  if (isUiOnly) {
+    return {
+      summary: `ออกแบบและพัฒนาระบบ Interactive UI Component พร้อม Micro-interactions${projectContext ? ` (บริบท: ${projectContext})` : ''}`,
+      technicalRequirements: [
+        '[Frontend Component] พัฒนา Dynamic Button Component ด้วย CSS Keyframes (Shimmer / Glow Animation) พร้อม Hover/Active State',
+        '[Accessibility & UX] รองรับ prefers-reduced-motion เพื่อไม่ให้รบกวนผู้ใช้งานที่มีปัญหาทางสายตา และรองรับ Responsive Touch Target บนมือถือ (ขั้นต่ำ 44x44px)',
+        '[Analytics Telemetry] ฝัง Event Tracking (Click-through Rate) เพื่อเก็บสถิติ Conversion Rate ผ่าน Client-side Analytics',
+        '[Backend / Database Layer] ไม่มีผลกระทบ (Frontend-only feature ไม่มีการเปลี่ยนแปลง API หรือ Database)'
+      ],
+      techStack: [
+        { name: 'React + Vite', desc: 'สำหรับสร้าง UI Component ที่ตอบสนองไว' },
+        { name: 'CSS Keyframes / Tailwind', desc: 'สำหรับทำ Micro-interactions และ Shimmer Effect ที่ลื่นไหล 60 FPS' }
+      ],
+      impactAnalysis: {
+        affectedModules: ['LandingPage.jsx', 'ButtonComponent.jsx'],
+        affectedTables: [],
+        refactoringEffortDays: '0 วันทำการ (ไม่มีผลกระทบต่อ Backend Core Services)',
+        impactSeverity: 'Low',
+        riskMitigation: 'ทดสอบ Cross-browser Compatibility (Safari, Chrome, Mobile) และตรวจสอบว่า Animation ไม่รบกวนการอ่านเนื้อหาหลัก'
+      },
+      acceptanceCriteria: [
+        '[AC-1] Given ผู้ใช้งานเปิดหน้าจอ, When ปุ่มแสดงผล, Then ต้องมี Shimmer Animation นุ่มนวลโดยไม่เกิด Frame Drop',
+        '[AC-2] Given ผู้ใช้งานคลิกที่ปุ่ม, When มีการกด, Then ต้องส่ง Analytics Event สำเร็จและนำทางไปยังฟังก์ชันเป้าหมายได้ถูกต้อง'
+      ],
+      nonFunctionalRequirements: [
+        '[Performance] UI Animation ต้องทำงานระดับ 60 FPS โดยใช้ GPU Hardware Acceleration (transform / opacity)',
+        '[Accessibility] สอดคล้องกับมาตรฐาน WCAG 2.1 AA สำหรับ Color Contrast และ Touch Target Size'
+      ],
+      apiDraft: [
+        "Client Analytics Event: trackEvent('cta_button_click', { button_name: 'hero_shimmer_cta' })"
+      ],
+      riskAnalysis: [
+        'ระวังการใช้เอฟเฟกต์ที่ฉูดฉาดเกินไปจนดึงความสนใจออกจากเนื้อหาสำคัญของเว็บไซต์'
+      ],
+      suggestedQuestions: [
+        'ต้องการให้ปุ่มนี้ลิงก์ไปยังหน้าใดเป็นเป้าหมายหลัก (เช่น หน้าสมัครสมาชิก หรือ หน้าชำระเงิน)?',
+        'มีเกณฑ์สีแบรนด์เฉพาะสำหรับเอฟเฟกต์ Shimmer หรือไม่?'
+      ],
+      effortEstimation: {
+        complexity: 'Low',
+        estimatedManDays: '0.5 - 1 วันทำการ',
+        estimatedCostRange: '3,000 - 6,000 บาท',
+        reasoning: 'เน้นงานเขียน CSS Animation, Component Styling, ทดสอบ Mobile Touch Target และเชื่อมต่อ Event Tracking'
+      }
+    };
+  }
+
+  let domainSummary = 'ออกแบบและพัฒนาระบบประมวลผลข้อมูลและ Business Workflow อัตโนมัติ';
+  let domainFeature = 'Automated Business Logic & Data Processing';
+  let apiEndpoint = 'POST /api/v1/workflows/execute';
+
+  if (/จ่าย|เงิน|ชำระ|payment|bank|โอน/.test(lower)) {
+    domainSummary = 'พัฒนาระบบ Payment Gateway Integration & Transaction Verification';
+    domainFeature = 'Payment Settlement & Webhook Processing';
+    apiEndpoint = 'POST /api/v1/payments/checkout';
+  } else if (/เตือน|แจ้ง|notify|notification|email|sms|line/.test(lower)) {
+    domainSummary = 'พัฒนาระบบ Event-Driven Multi-Channel Notification Dispatcher';
+    domainFeature = 'Automated Event Messaging & Alert Queue';
+    apiEndpoint = 'POST /api/v1/notifications/send';
+  } else if (/ค้นหา|search|กรอง|filter/.test(lower)) {
+    domainSummary = 'พัฒนาระบบ Advanced Search & Dynamic Multi-Criteria Filtering Engine';
+    domainFeature = 'Full-text Search & Indexed Query Retrieval';
+    apiEndpoint = 'GET /api/v1/search/query';
+  }
+
   return {
-    summary: `แปลความต้องการเชิงธุรกิจสำหรับ: "${text}"${projectContext ? ` (บริบท: ${projectContext})` : ''}`,
+    summary: `${domainSummary}${projectContext ? ` (บริบท: ${projectContext})` : ''}`,
     technicalRequirements: [
-      `[Frontend & UI/UX] ออกแบบและสร้าง UI Component สำหรับฟังก์ชัน '${text.slice(0, 40)}' รองรับ Responsive Layout และ Form Validation`,
+      `[Frontend & UI/UX] ออกแบบและสร้าง UI Component สำหรับ ${domainFeature} รองรับ Responsive Layout และ Form Validation`,
       `[Frontend State Management] จัดการ State หน้าจอเรียลไทม์ และรองรับ Micro-interactions (เช่น Loading Skeleton, Toast Alerts)`,
-      `[Backend Services] พัฒนา REST API Endpoints สำหรับประมวลผลข้อมูลฟังก์ชัน '${text.slice(0, 40)}' พร้อมทำ Request Validation`,
+      `[Backend Services] พัฒนา REST API Endpoints สำหรับประมวลผลข้อมูล ${domainFeature} พร้อมทำ DTO Schema Validation`,
       `[Database & Data Layer] ออกแบบ Data Schema, Indexing และ Caching Strategy ให้สอดคล้องกับสถาปัตยกรรมโปรเจกต์เดิม`,
       `[Security & Access Control] พัฒนาระบบ Authentication/Authorization และ Input Sanitization ป้องกัน XSS & Injection Attacks`,
       `[Integration & Testing] เชื่อมต่อ Third-party Services/APIs ที่เกี่ยวข้อง พร้อมเขียน Unit Tests & Integration Tests สำหรับ Core Logic`
@@ -201,20 +269,20 @@ function getLocalHumanToTech(text, projectContext = null) {
       riskMitigation: 'ทำ Regression Testing โมดูลเดิม และตรวจสอบ Token Authentication ก่อนเปิดให้บริการ'
     },
     acceptanceCriteria: [
-      `[AC-1] Given ผู้ใช้งานป้อนข้อมูล '${text.slice(0, 20)}...', When กดปุ่มบันทึก/ส่งข้อมูล, Then ระบบต้องแสดงสถานะสำเร็จและบันทึกข้อมูลเข้าฐานข้อมูลภายใน 1 วินาที`,
-      `[AC-2] Given ผู้ใช้งานป้อนข้อมูลไม่ครบถ้วน, When พยายามกดส่ง, Then ระบบต้องแสดง Inline Error Validation Alert ชัดเจน`,
-      `[AC-3] Given เกิดความผิดพลาดทางเครือข่าย/เซิร์ฟเวอร์, Then ระบบต้องแสดง Toast Notification แจ้งเตือนสุภาพพร้อมปุ่ม Retry`
+      `[AC-1] Given ผู้ใช้งานที่มีสิทธิ์เข้าถึงระบบ, When กดปุ่มบันทึกหรือส่งข้อมูลคำขอ, Then ระบบต้องตอบกลับสถานะสำเร็จและบันทึกข้อมูลเข้าฐานข้อมูลภายใน 500ms`,
+      `[AC-2] Given ผู้ใช้งานป้อนข้อมูลไม่ครบถ้วนตามเกณฑ์ Validation, When พยายามกดส่งคำขอ, Then ระบบต้องแสดง Inline Error Validation Alert ชัดเจน`,
+      `[AC-3] Given เกิดความผิดพลาดทางเครือข่ายหรือบริการภายนอก Timeout, Then ระบบต้องแสดง Toast Notification แจ้งเตือนสุภาพพร้อมปุ่ม Retry และมี Fallback รองรับ`
     ],
     nonFunctionalRequirements: [
-      `[Performance SLA] API Latency ต้องไม่เกิน 500ms ที่ระดับ 1,000 Concurrent Users`,
+      `[Performance SLA] API Latency ต้องไม่เกิน 300ms ที่ระดับ 1,000 Concurrent Users`,
       `[Security Standard] ปฏิบัติตามมาตรฐาน OWASP Top 10 และมาตรการคุ้มครองข้อมูลส่วนบุคคล (PDPA)`
     ],
     apiDraft: [
-      `POST /api/v1/requests (Body: { "payload": "${text.slice(0, 30)}...", "timestamp": "2026-09-19T..." })`,
-      `GET /api/v1/requests/{id} (Response: { "id": 1, "status": "SUCCESS" })`
+      `${apiEndpoint} (Request Body: { "action": "SUBMIT", "requestId": "uuid-v4" })`,
+      `GET /api/v1/system/health (Response: { "status": "UP" })`
     ],
     riskAnalysis: [
-      `ความเสี่ยงด้านความเข้ากันได้ (Backward Compatibility) กับเวอร์ชันเดิม`,
+      `ความเสี่ยงด้านความเข้ากันได้ (Backward Compatibility) กับโมดูลเดิมของระบบ`,
       `การจัดการ Concurrent Transactions หากมีผู้ใช้ส่งคำขอพร้อมกันจำนวนมาก`
     ],
     suggestedQuestions: [
@@ -223,23 +291,46 @@ function getLocalHumanToTech(text, projectContext = null) {
     ],
     effortEstimation: {
       complexity: 'Medium',
-      estimatedManDays: '4 - 6 วันทำการ',
+      estimatedManDays: '3 - 5 วันทำการ',
       estimatedCostRange: '20,000 - 35,000 บาท',
-      reasoning: `ประเมินจากการสร้าง UI Component ใหม่ 2 วัน, พัฒนาและเชื่อมต่อ Backend API 2 วัน และเขียน Automated Test พร้อม Refactor โมดูลเดิม 1-2 วันทำการ`
+      reasoning: `ประเมินจากการสร้าง UI Component ใหม่ 1.5 วัน, พัฒนาและเชื่อมต่อ Backend API 2 วัน และเขียน Automated Test พร้อม Refactor โมดูลเดิม 1 วันทำการ`
     }
   };
 }
 
 function getLocalTechToHuman(text) {
+  const lower = text.toLowerCase();
+  let issueTitle = 'ระบบกำลังอยู่ในขั้นตอนการปรับแต่งประสิทธิภาพและจัดระเบียบข้อมูลเบื้องหลัง';
+  let analogyIcon = '🛠️';
+  let analogyTitle = 'เปรียบเสมือน: การตรวจเช็กระยะและปรับจูนเครื่องยนต์ตามรอบการใช้งาน';
+  let analogyDesc = 'เหมือนการนำรถเข้าศูนย์บริการเพื่อเปลี่ยนถ่ายน้ำมันหล่อลื่นและตรวจความพร้อม เพื่อให้ขับขี่ได้อย่างราบรื่นและปลอดภัยสูงสุดครับ';
+
+  if (/database|deadlock|lock|pool|query|sql/.test(lower)) {
+    issueTitle = 'ระบบจัดเก็บข้อมูลมีความหนาแน่นของการเรียกใช้งานพร้อมกันสูง';
+    analogyIcon = '🗄️';
+    analogyTitle = 'เปรียบเสมือน: ห้องสมุดที่มีผู้เข้าค้นหาหนังสือเล่มเดียวกันพร้อมกันหลายท่าน';
+    analogyDesc = 'เหมือนบรรณารักษ์กำลังจัดคิวเปิดช่องให้บริการค้นหาเพิ่ม เพื่อให้ทุกท่านยืมหนังสือได้รวดเร็วโดยไม่ต้องยืนรอคิวครับ';
+  } else if (/network|api|timeout|เชื่อมต่อ|ล่ม|down|500|502/.test(lower)) {
+    issueTitle = 'ช่องทางเชื่อมต่อรับส่งข้อมูลระหว่างเซิร์ฟเวอร์เกิดการสะดุดชั่วคราว';
+    analogyIcon = '🚰';
+    analogyTitle = 'เปรียบเสมือน: ท่อส่งน้ำประปาที่มีการสลับวาล์วไปยังท่อสำรอง';
+    analogyDesc = 'เหมือนระบบกำลังสลับไปใช้ท่อส่งน้ำสายสำรอง เพื่อให้น้ำไหลเวียนได้ต่อเนื่องและแรงดันสม่ำเสมอครับ';
+  } else if (/memory|ram|cpu|leak|เต็ม|ช้า|ค้าง/.test(lower)) {
+    issueTitle = 'ทรัพยากรการประมวลผลของเครื่องแม่ข่ายทำงานเต็มพิกัดชั่วขณะ';
+    analogyIcon = '🚗';
+    analogyTitle = 'เปรียบเสมือน: รถสัญจรหนาแน่นบนทางด่วนในช่วงเวลาเร่งด่วน';
+    analogyDesc = 'เหมือนเจ้าหน้าที่กำลังเปิดช่องทางพิเศษเพื่อระบายการจราจรให้รถเคลื่อนตัวได้คล่องตัวและปลอดภัยครับ';
+  }
+
   return {
-    summary: 'แปลงปัญหาทางเทคนิคและอธิบายสถานะให้ลูกค้าเข้าใจอย่างมืออาชีพ',
-    politeExplanation: `เรียนท่านลูกค้า ทางทีมวิศวกรได้ตรวจสอบประเด็น "${text.slice(0, 45)}..." เรียบร้อยแล้ว ขณะนี้ทีมงานกำลังปรับปรุงและจัดระเบียบระบบท่อส่งข้อมูล เพื่อให้ระบบทำงานได้รวดเร็ว ลื่นไหล และปลอดภัยสูงสุดครับ`,
+    summary: issueTitle,
+    politeExplanation: `เรียนท่านลูกค้าและทีมงาน ทางทีมวิศวกรได้เข้าควบคุมและตรวจสอบสถานการณ์เรียบร้อยแล้วครับ สาเหตุเกิดจาก${issueTitle} ขณะนี้ทีมงานกำลังดำเนินการขยายขีดความสามารถและจัดระเบียบระบบสำรอง เพื่อให้ระบบกลับมาทำงานได้อย่างเสถียร รวดเร็ว และข้อมูลปลอดภัย 100% ครับ`,
     analogy: {
-      icon: '🚗',
-      title: 'เปรียบเสมือน: การปรับปรุงพื้นผิวทางด่วนและขยายช่องจราจร',
-      description: 'เหมือนทีมช่างกำลังซ่อมแซมและขยายช่องจ่ายเงิน เพื่อให้รถยนต์ทุกคันสัญจรได้เร็วขึ้นโดยไม่เกิดการติดขัดสะสมครับ'
+      icon: analogyIcon,
+      title: analogyTitle,
+      description: analogyDesc
     },
-    impact: 'ระบบอาจมีการตอบสนองช้าลงเล็กน้อยในบางช่วงเวลาสั้นๆ แต่ข้อมูลของท่านปลอดภัย 100% ครับ',
-    estimatedTime: 'ทีมงานคาดว่าจะดำเนินการตรวจสอบและทดสอบระบบให้พร้อมใช้งานเต็มรูปแบบภายใน 1-2 ชั่วโมงนี้ครับ'
+    impact: 'ผู้ใช้งานอาจพบการตอบสนองที่ชะลอตัวลงเล็กน้อยในบางช่วงเวลาสั้นๆ โดยไม่มีข้อมูลสูญหายอย่างแน่นอนครับ',
+    estimatedTime: 'ทีมงานกำลังเร่งดำเนินการและคาดว่าจะเสร็จสิ้นการปรับปรุงพร้อมทดสอบระบบภายใน 30-45 นาทีนี้ครับ'
   };
 }
