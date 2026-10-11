@@ -331,10 +331,13 @@ async def translate(req: TranslateRequest):
             }
         )
 
-    translated_data, is_ai, sanitized_txt, masked_items, rag_sources = await translate_with_gemini(
+    translated_data, is_ai, sanitized_txt, masked_items, rag_sources, provider_info, elapsed_sec = await translate_with_gemini(
         input_text=req.input_text,
         mode=req.mode,
         api_key=req.api_key,
+        groq_api_key=req.groq_api_key,
+        ollama_url=req.ollama_url,
+        preferred_provider=req.preferred_provider or "auto",
         project_context=req.project_context,
         budget_level=req.budget_level,
         timeline_constraint=req.timeline_constraint,
@@ -367,6 +370,8 @@ async def translate(req: TranslateRequest):
         rag_sources=rag_sources,
         is_ai=is_ai,
         data=translated_data,
+        provider_info=provider_info,
+        elapsed_seconds=elapsed_sec,
         quota_info=updated_quota
     )
 

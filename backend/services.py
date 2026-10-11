@@ -306,22 +306,30 @@ seed_initial_knowledge_base()
 # 3. TRANSLATION & GEMINI AI INTEGRATION WITH RAG & IMPACT ANALYSIS
 # ==============================================================================
 
+# Import Multi-AI Router
+from .router import MultiAIRouter
+
+router_engine = MultiAIRouter()
+
 async def translate_with_gemini(
     input_text: str,
     mode: str,
     api_key: str = None,
+    groq_api_key: str = None,
+    ollama_url: str = None,
+    preferred_provider: str = "auto",
     project_context: str = None,
     budget_level: str = None,
     timeline_constraint: str = None,
     use_rag: bool = True,
     sanitize_pii: bool = True,
     security_mode: str = "cloud"
-) -> Tuple[Dict[str, Any], bool, str, List[Dict[str, str]], List[Dict[str, Any]]]:
+) -> Tuple[Dict[str, Any], bool, str, List[Dict[str, str]], List[Dict[str, Any]], str, float]:
     """
-    กระบวนการแปลภาษาหลัก:
+    กระบวนการแปลภาษาหลักด้วย Multi-AI Gateway (Gemini, Groq, Ollama) & Failover:
     1. Masking PII / Secret Sanitization
     2. RAG Context Retrieval จาก SQLite Corporate Knowledge Base
-    3. เรียก Gemini AI หรือ Local Engine พร้อมสร้าง Legacy Impact Analysis
+    3. ส่งผ่าน MultiAIRouter พร้อม Failover อัตโนมัติสู่ Local Engine
     """
     # 1. PII Sanitization
     processed_text = input_text
@@ -359,50 +367,24 @@ async def translate_with_gemini(
     else:
         prompt_user = build_tech_to_human_prompt(processed_text, context_str, rag_context_str)
 
-    # If security_mode is private-local or no key, use enhanced local engine directly
-    print(f"DEBUG translate_with_gemini: key_present={bool(key and key.strip())}, key_len={len(key) if key else 0}, security_mode={security_mode}")
-    if security_mode == "private-local" or not key:
-        print("DEBUG: Using local fallback because private-local or no key provided.")
-        local_data = generate_local_fallback(processed_text, mode, project_context, rag_sources)
-        return local_data, False, processed_text, masked_items, rag_sources
+    # 4. Multi-AI Router Execution
+    ai_data, provider_info, elapsed = await router_engine.execute_translation(
+        system_prompt=SYSTEM_PROMPT,
+        user_prompt=prompt_user,
+        gemini_key=key,
+        groq_key=groq_api_key,
+        ollama_url=ollama_url,
+        security_mode=security_mode,
+        preferred_provider=preferred_provider
+    )
 
-    request_body = {
-        "contents": [
-            {
-                "role": "user",
-                "parts": [{"text": f"{SYSTEM_PROMPT}\n\n{prompt_user}"}]
-            }
-        ],
-        "generationConfig": {
-            "temperature": 0.2,
-            "topP": 0.8,
-            "responseMimeType": "application/json"
-        }
-    }
+    if ai_data is not None:
+        return ai_data, True, processed_text, masked_items, rag_sources, provider_info, elapsed
 
-    async with httpx.AsyncClient(timeout=16.0) as client:
-        for model in CANDIDATE_MODELS:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key.strip()}"
-            try:
-                print(f"DEBUG: Calling Gemini model {model}...")
-                resp = await client.post(url, json=request_body)
-                print(f"DEBUG: Model {model} response status: {resp.status_code}")
-                if resp.status_code == 200:
-                    res_data = resp.json()
-                    raw_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
-                    cleaned = raw_text.replace("```json", "").replace("```", "").strip()
-                    parsed = json.loads(cleaned)
-                    print(f"DEBUG: Model {model} SUCCESS! is_ai=True")
-                    return parsed, True, processed_text, masked_items, rag_sources
-                else:
-                    print(f"DEBUG: Model {model} error: {resp.text[:300]}")
-            except Exception as e:
-                print(f"DEBUG: Model {model} exception: {e}")
-
-    # Fallback to local rule engine
-    print("DEBUG: All models failed or unavailable. Falling back to local engine.")
+    # 5. Deterministic Rule Fallback Engine (Zero Downtime Safeguard)
+    print("DEBUG: All AI Providers failed or unavailable. Falling back to local engine.")
     local_data = generate_local_fallback(processed_text, mode, project_context, rag_sources)
-    return local_data, False, processed_text, masked_items, rag_sources
+    return local_data, False, processed_text, masked_items, rag_sources, "Local Rule Engine", elapsed
 
 
 def generate_local_fallback(text: str, mode: str, project_context: str = None, rag_sources: List[Dict[str, Any]] = None) -> Dict[str, Any]:

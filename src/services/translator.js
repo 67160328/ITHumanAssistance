@@ -22,6 +22,30 @@ export function saveApiKey(key) {
   localStorage.setItem('gemini_api_key', key);
 }
 
+export function getStoredGroqKey() {
+  return localStorage.getItem('groq_api_key') || '';
+}
+
+export function saveGroqKey(key) {
+  localStorage.setItem('groq_api_key', key);
+}
+
+export function getStoredOllamaUrl() {
+  return localStorage.getItem('ollama_url') || 'http://localhost:11434';
+}
+
+export function saveOllamaUrl(url) {
+  localStorage.setItem('ollama_url', url);
+}
+
+export function getStoredPreferredProvider() {
+  return localStorage.getItem('preferred_provider') || 'auto';
+}
+
+export function savePreferredProvider(prov) {
+  localStorage.setItem('preferred_provider', prov);
+}
+
 /**
  * Main Translator router - fetches from FastAPI Backend REST API or Client Fallback Engine
  */
@@ -35,19 +59,36 @@ export async function translateText(
   useRag = true,
   sanitizePii = true,
   securityMode = 'cloud',
-  username = null
+  username = null,
+  groqKeyOverride = null,
+  ollamaUrlOverride = null,
+  preferredProviderOverride = null
 ) {
   if (!input || !input.trim()) return null;
 
-  const apiKey = apiKeyOverride !== null ? apiKeyOverride : getStoredApiKey();
+  // Normalize apiKey if an object was passed from SettingsModal
+  let actualApiKey = apiKeyOverride !== null ? apiKeyOverride : getStoredApiKey();
+  let groqKey = groqKeyOverride !== null ? groqKeyOverride : getStoredGroqKey();
+  let ollamaUrl = ollamaUrlOverride !== null ? ollamaUrlOverride : getStoredOllamaUrl();
+  let preferredProvider = preferredProviderOverride !== null ? preferredProviderOverride : getStoredPreferredProvider();
+
+  if (typeof actualApiKey === 'object' && actualApiKey !== null) {
+    groqKey = actualApiKey.groqKey || groqKey;
+    ollamaUrl = actualApiKey.ollamaUrl || ollamaUrl;
+    preferredProvider = actualApiKey.preferredProvider || preferredProvider;
+    actualApiKey = actualApiKey.apiKey || '';
+  }
+
+  const apiKey = typeof actualApiKey === 'string' ? actualApiKey : '';
+
   const trimmed = input.trim();
   const baseUrl = getBackendBaseUrl();
 
-  // 1. Try FastAPI REST Backend Endpoint (/api/translate) with fast timeout
+  // 1. Try FastAPI REST Backend Endpoint (/api/translate) with Multi-AI routing
   if (baseUrl) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
 
       const response = await fetch(`${baseUrl}/api/translate`, {
         method: 'POST',
@@ -59,6 +100,9 @@ export async function translateText(
           input_text: trimmed,
           mode: mode,
           api_key: apiKey,
+          groq_api_key: groqKey,
+          ollama_url: ollamaUrl,
+          preferred_provider: preferredProvider,
           project_context: projectContext,
           budget_level: budgetLevel,
           timeline_constraint: timelineConstraint,
@@ -89,6 +133,8 @@ export async function translateText(
           ragSources: result.rag_sources || [],
           isAi: result.is_ai,
           data: result.data,
+          providerInfo: result.provider_info || 'Auto-Router',
+          elapsedSeconds: result.elapsed_seconds || 0.0,
           quotaInfo: result.quota_info
         };
       }

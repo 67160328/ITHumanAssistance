@@ -298,9 +298,10 @@ export default function App() {
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        onSave={(newKey) => {
-          setCurrentApiKey(newKey);
-          showToast('บันทึก Gemini API Key เรียบร้อยแล้ว!');
+        onSave={(newCfg) => {
+          const keyStr = typeof newCfg === 'object' && newCfg !== null ? (newCfg.apiKey || '') : String(newCfg || '');
+          setCurrentApiKey(keyStr);
+          showToast('บันทึกการตั้งค่า AI Gateway เรียบร้อยแล้ว!');
         }}
       />
 
@@ -794,6 +795,30 @@ export default function App() {
             </div>
           ) : (
             <div>
+              {/* Multi-AI Provider & Latency Status Badge */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.5rem 0.85rem',
+                marginBottom: '0.85rem',
+                borderRadius: '8px',
+                background: translationResult.isAi ? 'rgba(99, 102, 241, 0.08)' : 'rgba(234, 179, 8, 0.08)',
+                border: translationResult.isAi ? '1px solid rgba(99, 102, 241, 0.25)' : '1px solid rgba(234, 179, 8, 0.25)',
+                fontSize: '0.8rem',
+                color: 'var(--text-main)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                  <span style={{ fontSize: '1rem' }}>{translationResult.isAi ? '⚡' : '🛡️'}</span>
+                  <span><strong>AI Provider:</strong> {translationResult.providerInfo || (translationResult.isAi ? 'Gemini 3.5 Flash' : 'Local Rule Engine')}</span>
+                </div>
+                {translationResult.elapsedSeconds > 0 && (
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 500 }}>
+                    ⏱️ Latency: {translationResult.elapsedSeconds}s
+                  </div>
+                )}
+              </div>
+
               {/* Impact Analysis & RAG Context (Human-to-Tech Mode) */}
               {translationResult.mode === 'human-to-tech' && (
                 <ImpactAnalysisCard

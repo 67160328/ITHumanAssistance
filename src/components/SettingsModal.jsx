@@ -1,10 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { X, Key, Check, Bot, AlertCircle, Send, ExternalLink } from 'lucide-react';
-import { getStoredApiKey, saveApiKey } from '../services/translator';
+import { X, Key, Check, Bot, AlertCircle, Send, ExternalLink, Cpu } from 'lucide-react';
+import {
+  getStoredApiKey,
+  saveApiKey,
+  getStoredGroqKey,
+  saveGroqKey,
+  getStoredOllamaUrl,
+  saveOllamaUrl,
+  getStoredPreferredProvider,
+  savePreferredProvider
+} from '../services/translator';
 import { getStoredTelegramConfig, saveTelegramConfig, fetchTelegramBackendConfig, SYSTEM_DEFAULT_TOKEN } from '../services/telegramService';
 
 export default function SettingsModal({ isOpen, onClose, onSave }) {
   const [apiKey, setApiKey] = useState(getStoredApiKey());
+  const [groqKey, setGroqKey] = useState(getStoredGroqKey());
+  const [ollamaUrl, setOllamaUrl] = useState(getStoredOllamaUrl());
+  const [preferredProvider, setPreferredProvider] = useState(getStoredPreferredProvider());
+
   const initialTele = getStoredTelegramConfig();
   const [telegramToken, setTelegramToken] = useState(initialTele.token || SYSTEM_DEFAULT_TOKEN);
   const [telegramChatId, setTelegramChatId] = useState(initialTele.chatId);
@@ -12,6 +25,11 @@ export default function SettingsModal({ isOpen, onClose, onSave }) {
 
   useEffect(() => {
     if (isOpen) {
+      setApiKey(getStoredApiKey());
+      setGroqKey(getStoredGroqKey());
+      setOllamaUrl(getStoredOllamaUrl());
+      setPreferredProvider(getStoredPreferredProvider());
+
       fetchTelegramBackendConfig().then((cfg) => {
         if (cfg) {
           if (cfg.default_token && (!telegramToken || telegramToken === '')) {
@@ -29,9 +47,12 @@ export default function SettingsModal({ isOpen, onClose, onSave }) {
 
   const handleSave = () => {
     saveApiKey(apiKey.trim());
+    saveGroqKey(groqKey.trim());
+    saveOllamaUrl(ollamaUrl.trim());
+    savePreferredProvider(preferredProvider);
     saveTelegramConfig(telegramToken, telegramChatId);
     setSavedSuccess(true);
-    if (onSave) onSave(apiKey.trim());
+    if (onSave) onSave({ apiKey: apiKey.trim(), groqKey: groqKey.trim(), ollamaUrl: ollamaUrl.trim(), preferredProvider });
     setTimeout(() => {
       setSavedSuccess(false);
       onClose();
@@ -52,22 +73,74 @@ export default function SettingsModal({ isOpen, onClose, onSave }) {
         </div>
 
         <div className="modal-body">
-          {/* Section 1: Gemini AI Key */}
+          {/* Section 1: Multi-AI Gateway Configuration */}
           <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '1.2rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', color: '#A5B4FC', fontWeight: 600, fontSize: '0.95rem' }}>
               <Key size={16} />
-              <span>Google Gemini AI API Key</span>
+              <span>Multi-AI Gateway (Gemini, Groq, Ollama)</span>
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.8rem' }}>
-              ป้อน API Key จาก <strong>Google AI Studio</strong> เพื่อเปิดใช้งานการแปลภาษาไอทีแบบเรียลไทม์
+              กำหนด AI Provider และ API Key สำหรับระบบ Smart Router (มี Failover สำรองอัตโนมัติ)
             </p>
-            <input
-              type="password"
-              className="custom-input"
-              placeholder="AIzaSy..."
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-            />
+
+            {/* Provider Selection */}
+            <div style={{ marginBottom: '0.8rem' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.3rem' }}>
+                ลำดับความสำคัญของ AI (Routing Preference):
+              </label>
+              <select
+                className="custom-input"
+                value={preferredProvider}
+                onChange={(e) => setPreferredProvider(e.target.value)}
+                style={{ cursor: 'pointer' }}
+              >
+                <option value="auto">🟢 Smart Auto-Router (Gemini ➔ Groq ➔ Ollama ➔ Local)</option>
+                <option value="groq">⚡ Speed First: Groq Cloud LPU (Llama 3.3 70B)</option>
+                <option value="gemini">🥇 Language First: Google Gemini (Gemini Flash)</option>
+              </select>
+            </div>
+
+            {/* Google Gemini Key */}
+            <div style={{ marginBottom: '0.8rem' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.3rem' }}>
+                1. Google Gemini API Key (ฟรี):
+              </label>
+              <input
+                type="password"
+                className="custom-input"
+                placeholder="AIzaSy..."
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+              />
+            </div>
+
+            {/* Groq Cloud Key */}
+            <div style={{ marginBottom: '0.8rem' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.3rem' }}>
+                2. Groq Cloud API Key (ฟรี - gsk_... สำหรับ Ultra-Fast Failover):
+              </label>
+              <input
+                type="password"
+                className="custom-input"
+                placeholder="gsk_..."
+                value={groqKey}
+                onChange={(e) => setGroqKey(e.target.value)}
+              />
+            </div>
+
+            {/* Local Ollama URL */}
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.3rem' }}>
+                3. Local Ollama URL (สำหรับ On-Premise / Private Local):
+              </label>
+              <input
+                type="text"
+                className="custom-input"
+                placeholder="http://localhost:11434"
+                value={ollamaUrl}
+                onChange={(e) => setOllamaUrl(e.target.value)}
+              />
+            </div>
           </div>
 
           {/* Section 2: Telegram Bot Integration */}

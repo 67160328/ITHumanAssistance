@@ -6,6 +6,9 @@ class TranslateRequest(BaseModel):
     input_text: str = Field(..., min_length=1, description="ข้อความที่ต้องการแปลภาษา (ไทย)")
     mode: str = Field(..., description="โหมดการแปล: 'human-to-tech' หรือ 'tech-to-human'")
     api_key: Optional[str] = Field(None, description="Google Gemini API Key (ถ้าไม่ใส่จะใช้ Key หลักในระบบ)")
+    groq_api_key: Optional[str] = Field(None, description="Groq Cloud API Key สำหรับ Failover / Ultra-fast inference")
+    ollama_url: Optional[str] = Field(None, description="Local Ollama URL (เช่น http://localhost:11434)")
+    preferred_provider: Optional[str] = Field("auto", description="AI Provider ที่ต้องการ: 'auto', 'gemini', 'groq', 'ollama'")
     project_context: Optional[str] = Field(None, description="บริบทของโปรเจกต์/Tech Stack ขององค์กร")
     budget_level: Optional[str] = Field(None, description="ระดับงบประมาณ (Low, Medium, Enterprise)")
     timeline_constraint: Optional[str] = Field(None, description="ข้อจำกัดด้านเวลา (เช่น Urgent <1wk, Standard 1mo)")
@@ -63,6 +66,8 @@ class TranslateResponse(BaseModel):
     rag_sources: Optional[List[Dict[str, Any]]] = []
     is_ai: bool
     data: Dict[str, Any]
+    provider_info: Optional[str] = "Auto-Router"
+    elapsed_seconds: Optional[float] = 0.0
     quota_info: Optional[Dict[str, Any]] = None
 
 
